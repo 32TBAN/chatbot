@@ -1,7 +1,8 @@
 {
   "main": "main.js",
+  "type": "module",
   "scripts": {
-    "start": "node ."
+    "start": "node .main.js"
   },
   "dependencies": {
     "qrcode-terminal": "^0.12.0",
