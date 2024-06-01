@@ -1,0 +1,6 @@
+2024/05/31-21:34:54.944 293c Reusing MANIFEST D:\Emprendimiento\Python\chatbot\sessions\session\Default\Local Storage\leveldb/MANIFEST-000001
+2024/05/31-21:34:54.951 293c Recovering log #3
+2024/05/31-21:34:54.953 293c Reusing old log D:\Emprendimiento\Python\chatbot\sessions\session\Default\Local Storage\leveldb/000003.log 
+2024/05/31-21:36:56.422 2188 Level-0 table #5: started
+2024/05/31-21:36:56.772 2188 Level-0 table #5: 19136 bytes OK
+2024/05/31-21:36:56.896 2188 Delete type=0 #3
