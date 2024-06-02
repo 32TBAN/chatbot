@@ -2,9 +2,12 @@ import pkg from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 import MessageHandler from "./sendMessages.js";
 
-const { Client, LocalAuth, MessageMedia } = pkg;
+const { Client, LocalAuth } = pkg;
 
 const client = new Client({
+  puppeteer: {
+    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+},
   authStrategy: new LocalAuth({
     dataPath: "sessions",
   }),
@@ -17,8 +20,7 @@ const client = new Client({
 
 client.on("ready", () => {
   console.log("Client is ready!");
-  const stickerMedia = new MessageMedia('image/png', './Sin título.jpg');
-  new MessageHandler(client, stickerMedia)
+  new MessageHandler(client)
 });
 
 client.on("qr", (qr) => {

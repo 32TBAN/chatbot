@@ -1,4 +1,8 @@
+import pkg from "whatsapp-web.js";
+import fs from 'fs';
 import messages from "./messages.js";
+
+const { MessageMedia } = pkg;
 
 class MessageHandler {
     constructor(client) {
@@ -28,10 +32,18 @@ class MessageHandler {
             await this.sendSupport(msg.from);
         } else if (lowerCaseMessage === '2') {
             await this.sendInformation(msg.from);
+        } else if (lowerCaseMessage === '3') {
+            await this.sendQuery(msg.from);
+        } else if (lowerCaseMessage === '4') {
+            await this.sendFollow(msg.from);
+        } else if (lowerCaseMessage === '5') {
+            await this.sendError(msg.from);
         } else if (lowerCaseMessage === 'a') {
             await this.sendInstall(msg.from);
         } else if (lowerCaseMessage === 'b') {
             await this.sendUpdate(msg.from);
+        } else if (lowerCaseMessage == 'c'){
+            await this.sendDocuments(msg.from)
         } else {
             await this.sendDefaultResponse(msg.from);
         }
@@ -46,7 +58,10 @@ class MessageHandler {
                 console.error('Error al enviar el saludo:', err);
             });
 
-            await this.client.sendMessage(to, new MessageMedia('image/jpg','./Sin título.jpg'))
+            const stickerPath = './Sin título.jpg'; 
+            const stickerMedia = MessageMedia.fromFilePath(stickerPath);
+
+            await this.client.sendMessage(to, stickerMedia, { sendMediaAsSticker: true })
     }
 
     async sendInformation(to) {
@@ -77,8 +92,18 @@ class MessageHandler {
             .catch(err => {
                 console.error('Error al enviar los pedidos:', err);
             });
-    }
 
+            const pdfPath = './install.pdf';
+            const pdfMedia = MessageMedia.fromFilePath(pdfPath);
+        
+            await this.client.sendMessage(to, pdfMedia)
+              .then(res => {
+                console.log('PDF enviado exitosamente');
+              })
+              .catch(err => {
+                console.error('Error al enviar el PDF:', err);
+              });
+    }
 
     async sendUpdate(to) {
         await this.client.sendMessage(to, messages.updates)
@@ -89,6 +114,49 @@ class MessageHandler {
                 console.error('Error al enviar los pedidos:', err);
             });
     }
+
+    async sendDocuments(to){
+        await this.client.sendMessage(to,messages.ducumentsGuide)
+    }
+
+    
+    async sendQuery(to) {
+            const videoMedia  = MessageMedia.fromUrl("");
+        
+            await this.client.sendMessage(to, videoMedia)
+              .then(res => {
+                console.log('video enviado exitosamente',res);
+              })
+              .catch(err => {
+                console.error('Error al enviar el video:', err);
+              });
+    }
+
+    async sendFollow(to) {
+        const pdfPath = './SHIKANOKO NOKONOKO KOSHITANTAN.mp4';
+        const pdfMedia = MessageMedia.fromFilePath(pdfPath);
+    
+        await this.client.sendMessage(to, pdfMedia)
+          .then(res => {
+            console.log('PDF enviado exitosamente');
+          })
+          .catch(err => {
+            console.error('Error al enviar el PDF:', err);
+          });          
+    }
+
+    async sendFollow(to) {
+        const pdfPath = './ラヴィ アクガキコア 【歌ってみた】 Lavie Surii (Akugaki Koa cover).mp4';
+        const pdfMedia = MessageMedia.fromFilePath(pdfPath);
+    
+        await this.client.sendMessage(to, pdfMedia)
+          .then(res => {
+            console.log('PDF enviado exitosamente');
+          })
+          .catch(err => {
+            console.error('Error al enviar el PDF:', err);
+          });
+        }
 
     async sendDefaultResponse(to) {
         const defaultMessage = 'Lo siento, no entendí tu mensaje. Por favor elige una opción:\n\n' + messages.greeting;
