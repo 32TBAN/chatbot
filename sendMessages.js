@@ -19,7 +19,7 @@
 
             if (msg.from != "593979353728@c.us" || msg.from != "593979353728@c.us") {
                 console.log('Mensaje de grupo ignorado:', msg.from);
-                return; // Ignorar mensajes de grupos
+                return; 
             }
 
             console.log('Mensaje: ', msg.body);
@@ -31,8 +31,12 @@
             await sleep(10000);
 
             const lowerCaseMessage = msg.body.toLowerCase();
+            const greetings = ['hola', 'buenos', 'buenas', 'hey', 'hi', 'hello'];
 
-            if (lowerCaseMessage.includes('hola')) {
+            const isGreeting = greetings.some(greeting => lowerCaseMessage.includes(greeting));
+
+
+            if (isGreeting) {
                 await this.sendGreeting(msg.from);
             } else if (lowerCaseMessage === '1') {
                 await this.sendSupport(msg.from);
@@ -56,7 +60,7 @@
         }
 
         async sendGreeting(to) {
-            await this.client.sendMessage(to, messages.greeting)
+            await this.client.sendMessage(to, " Hola👋"+ messages.greeting)
                 .then(res => {
                     console.log('Saludo enviado exitosamente',res.body);
                 })
