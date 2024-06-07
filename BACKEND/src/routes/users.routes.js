@@ -3,7 +3,7 @@ const {
   createUser,
   getAllUser,
   getUser,
-} =  require("../controllers/controller.js")
+} =  require("../controllers/users.controller.js")
 
 const router = Router();
 
@@ -11,6 +11,6 @@ router.post("/user", createUser);
 
 router.get("/users", getAllUser);
 
-router.get("/user/:id", getUser);
+router.get("/user/:phone", getUser);
 
 module.exports = router;

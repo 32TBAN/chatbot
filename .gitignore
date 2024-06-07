@@ -1,5 +1,11 @@
+#nodejs
 node_modules
+BACKEND/node_modules
+
+#session whatsapp
 .wwebjs_auth
 sessions/
+
+# eviromant varibles
 .env
-BACKEND/node_modules
+BACKEND/.env

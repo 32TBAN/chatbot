@@ -1,6 +1,7 @@
 import pkg from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 import MessageHandler from "./sendMessages.js";
+import AutomatedMessageHandler from "./automaticMessange.js";
 
 const { Client, LocalAuth } = pkg;
 
@@ -20,6 +21,7 @@ const client = new Client({
 client.on("ready", () => {
   console.log("Client is ready!");
   new MessageHandler(client)
+  new AutomatedMessageHandler(client, 30); // Enviar mensajes de promoción cada 30 minutos
 });
 
 client.on("qr", (qr) => {
