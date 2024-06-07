@@ -124,7 +124,10 @@ class MessageHandler {
   }
 
   async sendAgenda(to) {
-    
+    //TODO: Primero ver si existe el usuario si no registrar
+    //TODO: Una vez registrado se puede agendar la cita
+    //TODO: la cita debe llevar hora y asunto.
+    //TODO: Una vez regitrado la cita se debe mostrar la ubicacion en donde se llevara la cita (UTA)
     const media = MessageMedia.fromFilePath("./v2.mp4");
     await this.client.sendMessage(to, media).then((res) => {
       console.log("video enviado exitosamente");
@@ -132,6 +135,8 @@ class MessageHandler {
   }
 
   async sendComment(to) {
+    //TODO: Debe estar registrado si no lo esta registrar
+    //TODO: Ingresar el comentario
     const media = MessageMedia.fromFilePath("./v3.mp4");
     await this.client.sendMessage(to, media).then((res) => {
       console.log("video enviado exitosamente");

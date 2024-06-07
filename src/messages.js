@@ -40,7 +40,4 @@ const messages = {
     "- Entrega a tiempo y dentro del presupuesto.\n\n" +
     "¡No te pierdas la oportunidad de llevar tu empresa al siguiente nivel con nuestra ayuda! ¿Listo para comenzar?",
 };
-//TODO: Organizar mensajes
-//TODO: Conectar base de datos
-//TODO: Enviar mensaje de reunion con un ubicacion
 export default messages;
