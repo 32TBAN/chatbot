@@ -26,7 +26,7 @@ class MessageHandler {
   async handleMessage(msg) {
     console.log("De: ", msg.from);
 
-    if (
+    if (  //TODO: comprobar si esta en la base de datos
       msg.from != "593979353728@c.us" &&
       msg.from != "593984635564@c.us" &&
       msg.from != "593984493368@c.us"

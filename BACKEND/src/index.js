@@ -1,10 +1,15 @@
-const express = require('express')
-const morgan = require('morgan')
+const express = require("express")
+const cors = require("cors")
+const morgan = require("morgan")
+const router = require("./routes/routes.js")
 
-const app = express()
+const app = express();
 
-app.listen(3000)
+app.use(cors());
+app.use(morgan("dev"));
+app.use(express.json())
 
-app.use(morgan('dev'))
+app.use(router);
 
-console.log('LISTEN ON PORT 3000')
+app.listen(4000);
+console.log(`Server on port 4000`);
