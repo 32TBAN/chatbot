@@ -5,9 +5,14 @@ import {
   validKeyWord,
   registerUser,
   validateEmail,
+  formatIcsDateTime,
+  incrementHour,
+  validateDate,
+  validateTime,
 } from "./methods.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 import {
   informacionKeywords,
@@ -18,12 +23,13 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const { MessageMedia } = pkg;
+const { MessageMedia, Location } = pkg;
 
 class MessageHandler {
   constructor(client) {
     this.client = client;
     this.pendingRegistrations = {}; // Para almacenar el estado de registro de los usuarios
+    this.pendingSchedules = {}; // Para almacenar el estado de las citas pendientes
     this.initialize();
   }
 
@@ -82,7 +88,10 @@ class MessageHandler {
     const lowerCaseMessage = msg.body.toLowerCase();
 
     const greetings = ["hola", "buenos", "buenas", "hey", "hi", "hello"];
-
+    if (this.pendingSchedules[msg.from]) {
+      await this.handlePendingSchedule(msg, user);
+      return;
+    }
     if (validKeyWord(lowerCaseMessage, greetings)) {
       await this.sendGreetingMessage(msg.from, user.name);
     } else if (validKeyWord(lowerCaseMessage, informacionKeywords)) {
@@ -155,9 +164,10 @@ class MessageHandler {
     await this.client.sendMessage(to, product2, { caption: messages.product2 });
 
     const product3Path = path.resolve(__dirname, "./assets/video/product3.mp4");
-    const product3 = MessageMedia.fromUrl(product3Path);
+    const product3 = MessageMedia.fromFilePath(product3Path);
     await this.client.sendMessage(to, product3, {
-      caption: messages.product3,sendVideoAsGif: true,
+      caption: messages.product3,
+      sendVideoAsGif: true,
     });
 
     const product4Path = path.resolve(__dirname, "./assets/img/product4.png");
@@ -187,15 +197,104 @@ class MessageHandler {
   }
 
   async sendAgenda(to) {
-    //TODO: Primero ver si existe el usuario si no registrar
-    //TODO: Una vez registrado se puede agendar la cita
-    //TODO: la cita debe llevar hora y asunto.
-    //TODO: Una vez regitrado la cita se debe mostrar la ubicacion en donde se llevara la cita (UTA)
-    const videoPath = path.resolve(__dirname, "./assets/video/v2.mp4");
-    const v2 = MessageMedia.fromFilePath(videoPath);
-    await this.client.sendMessage(to, v2).then((res) => {
-      console.log("video enviado exitosamente");
+    const latitude = -1.2693696;
+    const longitude = -78.648095;
+    const location = new Location(latitude, longitude, {
+      url: "https://www.google.com/maps/place/Universidad+T%C3%A9cnica+de+Ambato/@-1.2693696,-78.648095,14z/data=!4m10!1m2!2m1!1suniversidad+tecnica+de+ambato!3m6!1s0x91d38225e088295f:0xb16c26da66e6e4b3!8m2!3d-1.2693706!4d-78.6259616!15sCh11bml2ZXJzaWRhZCB0ZWNuaWNhIGRlIGFtYmF0b5IBCnVuaXZlcnNpdHngAQA!16s%2Fm%2F0cpbjgr?entry=ttu",
     });
+
+    await this.client.sendMessage(to, messages.schedule);
+    await this.client.sendMessage(to, location);
+
+    await this.client.sendMessage(to, messages.scheduleConfirmed);
+    // Guardar el estado de la agenda pendiente
+    this.pendingSchedules[to] = { step: 1 };
+  }
+
+  async handlePendingSchedule(msg) {
+    const scheduleState = this.pendingSchedules[msg.from];
+
+    if (scheduleState.step === 1) {
+      if (msg.body.toLowerCase() === "si") {
+        await this.client.sendMessage(
+          msg.from,
+          "Por favor, ingresa la fecha de la cita (en formato AAAA-MM-DD):"
+        );
+        scheduleState.step = 2;
+      } else if (msg.body.toLowerCase() === "no") {
+        await this.client.sendMessage(
+          msg.from,
+          "Entendido. Si cambias de opinión, no dudes en decírnoslo."
+        );
+        delete this.pendingSchedules[msg.from];
+      }
+    } else if (scheduleState.step === 2) {
+      const date = msg.body.trim();
+      if (validateDate(date)) {
+        scheduleState.date = date;
+        await this.client.sendMessage(
+          msg.from,
+          "Por favor, ingresa la hora de la cita (en formato HH:MM):"
+        );
+        scheduleState.step = 3;
+      } else {
+        await this.client.sendMessage(
+          msg.from,
+          "Fecha inválida. Por favor, ingresa la fecha en el formato correcto (AAAA-MM-DD):"
+        );
+      }
+    } else if (scheduleState.step === 3) {
+      const time = msg.body.trim();
+      if (validateTime(time)) {
+        scheduleState.time = time;
+        await this.client.sendMessage(
+          msg.from,
+          "Por favor, ingresa el asunto de la cita:"
+        );
+        scheduleState.step = 4;
+      } else {
+        await this.client.sendMessage(
+          msg.from,
+          "Hora inválida. Por favor, ingresa la hora en el formato correcto (HH:MM):"
+        );
+      }
+      scheduleState.step = 4;
+    } else if (scheduleState.step === 4) {
+      scheduleState.subject = msg.body.trim();
+
+      // Crear y enviar el archivo de evento .ics
+      const eventIcsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:${scheduleState.subject}
+DTSTART:${formatIcsDateTime(scheduleState.date, scheduleState.time)}
+DTEND:${formatIcsDateTime(
+        scheduleState.date,
+        incrementHour(scheduleState.time)
+      )}
+LOCATION:Universidad Técnica de Ambato
+DESCRIPTION:Asunto: ${scheduleState.subject}
+END:VEVENT
+END:VCALENDAR`;
+
+      const eventPath = path.resolve(__dirname, "./event.ics");
+      fs.writeFileSync(eventPath, eventIcsContent);
+
+      const eventMedia = MessageMedia.fromFilePath(eventPath);
+      await this.client.sendMessage(msg.from, eventMedia, {
+        caption: "Si gusta puede agregar este evento a su calendario.",
+      });
+
+      // Enviar video adicional
+      const videoPath = path.resolve(__dirname, "./assets/video/v2.mp4");
+      const v2 = MessageMedia.fromFilePath(videoPath);
+      await this.client.sendMessage(msg.from, v2).then((res) => {
+        console.log("Video enviado exitosamente");
+      });
+
+      await this.client.sendMessage(msg.from, messages.scheduleConfirmed);
+      delete this.pendingSchedules[msg.from];
+    }
   }
 
   async sendComment(to) {

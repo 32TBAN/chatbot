@@ -1,0 +1,10 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:Sexo
+DTSTART:[object Promise]
+DTEND:[object Promise]
+LOCATION:Universidad Técnica de Ambato
+DESCRIPTION:Asunto: Sexo
+END:VEVENT
+END:VCALENDAR

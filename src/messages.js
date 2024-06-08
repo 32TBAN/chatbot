@@ -44,6 +44,8 @@ const messages = {
     numberNotFound: "No encontramos tu número en nuestra base de datos. ¿Deseas registrarte? (responde 'sí' o 'no')",
     name: "✏️ Por favor, ingresa tu nombre:",
     noRegister: "👌 Entendido. Si cambias de opinión, no dudes en decírnoslo.",
-    invalidEmail: "El email no es válido. Por favor, ingresa un email válido: 📧"
+    invalidEmail: "El email no es válido. Por favor, ingresa un email válido: 📧",
+    schedule: "Todas las citas agendas se llevaran acabo en:",
+    scheduleConfirmed: "Aun así quiere agendar una cita (responde 'si' o 'no')"
 };
 export default messages;
