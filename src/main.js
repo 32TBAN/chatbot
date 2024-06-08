@@ -21,7 +21,7 @@ const client = new Client({
 client.on("ready", () => {
   console.log("Client is ready!");
   new MessageHandler(client)
-  new AutomatedMessageHandler(client, 30); // Enviar mensajes de promoción cada 30 minutos
+  new AutomatedMessageHandler(client, 30); // Enviar mensajes de promoción cada n minutos
 });
 
 client.on("qr", (qr) => {

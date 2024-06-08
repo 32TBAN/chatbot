@@ -1,6 +1,11 @@
 import pkg from "whatsapp-web.js";
 import messages from "./messages.js";
-import { searchPhone, validKeyWord, registerUser } from "./methods.js";
+import {
+  searchPhone,
+  validKeyWord,
+  registerUser,
+  validateEmail,
+} from "./methods.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -40,68 +45,46 @@ class MessageHandler {
     }
 
     console.log("Mensaje: ", msg.body);
-    const lowerCaseMessage = msg.body.toLowerCase();
-
+    // Manejo de registro pendiente
     if (this.pendingRegistrations[msg.from]) {
-      const registrationState = this.pendingRegistrations[msg.from];
-      if (registrationState.step === 1) {
-        registrationState.name = msg.body.trim();
-        registrationState.step = 2;
-        await this.client.sendMessage(msg.from, "Por favor, ingresa tu email:");
-      } else if (registrationState.step === 2) {
-        registrationState.email = msg.body.trim();
-        await registerUser(registrationState);
-        delete this.pendingRegistrations[msg.from];
-        await this.client.sendMessage(msg.from, "¡Registro completado! 🎉");
-      }
+      console.log(this.pendingRegistrations);
+      await this.handlePendingRegistration(msg);
       return;
     }
 
-    const user = searchPhone(msg.from);
+    const user = await searchPhone(msg.from);
     if (user != null) {
-      const logoPath = path.resolve(__dirname, "./assets/img/logo.jpg");
-      const logo = MessageMedia.fromFilePath(logoPath);
-      await this.client.sendMessage(msg.from, logo);
-
-      await this.client.sendMessage(
-        msg.from,
-        " Hola👋 " + user.name + " " + messages.greeting
-      );
+      await this.processMessageForRegisteredUser(msg, user);
     } else {
-      const logoPath = path.resolve(__dirname, "./assets/img/logo.jpg");
-      const logo = MessageMedia.fromFilePath(logoPath);
-      await this.client.sendMessage(msg.from, logo);
-      await this.client.sendMessage(
-        msg.from,
-        "No encontramos tu número en nuestra base de datos. ¿Deseas registrarte? (responde 'sí' o 'no')"
-      );
-
-      this.client.on("message_create", async (responseMsg) => {
-        if (
-          responseMsg.from === msg.from &&
-          responseMsg.body.toLowerCase() === "sí"
-        ) {
-          this.pendingRegistrations[msg.from] = { phone: msg.from, step: 1 };
-          await this.client.sendMessage(
-            msg.from,
-            "Por favor, ingresa tu nombre:"
-          );
-        } else if (
-          responseMsg.from === msg.from &&
-          responseMsg.body.toLowerCase() === "no"
-        ) {
-          await this.client.sendMessage(
-            msg.from,
-            "Entendido. Si cambias de opinión, no dudes en decírnoslo."
-          );
-        }
-      });
+      await this.promptRegistration(msg.from);
     }
+  }
+
+  async handlePendingRegistration(msg) {
+    const registrationState = this.pendingRegistrations[msg.from];
+    if (registrationState.step === 1) {
+      registrationState.name = msg.body.trim();
+      registrationState.step = 2;
+      await this.client.sendMessage(msg.from, messages.email);
+    } else if (registrationState.step === 2) {
+      registrationState.email = msg.body.trim();
+      if (validateEmail(registrationState.email)) {
+        await registerUser(registrationState);
+        delete this.pendingRegistrations[msg.from];
+        await this.client.sendMessage(msg.from, messages.register);
+      } else {
+        await this.client.sendMessage(msg.from, messages.invalidEmail);
+      }
+    }
+  }
+
+  async processMessageForRegisteredUser(msg, user) {
+    const lowerCaseMessage = msg.body.toLowerCase();
 
     const greetings = ["hola", "buenos", "buenas", "hey", "hi", "hello"];
 
     if (validKeyWord(lowerCaseMessage, greetings)) {
-      await this.sendGreeting(msg.from);
+      await this.sendGreetingMessage(msg.from, user.name);
     } else if (validKeyWord(lowerCaseMessage, informacionKeywords)) {
       await this.sendInformation(msg.from);
     } else if (validKeyWord(lowerCaseMessage, consultaKeywords)) {
@@ -114,26 +97,43 @@ class MessageHandler {
       await this.sendInstall(msg.from);
     } else if (lowerCaseMessage === "b") {
       await this.sendUpdate(msg.from);
-    } else if (lowerCaseMessage == "c") {
+    } else if (lowerCaseMessage === "c") {
       await this.sendDocuments(msg.from);
     } else {
       await this.sendDefaultResponse(msg);
     }
   }
 
-  async sendGreeting(to) {
+  async promptRegistration(to) {
+    if (!this.pendingRegistrations[to]) {
+      const logoPath = path.resolve(__dirname, "./assets/img/logo.jpg");
+      const logo = MessageMedia.fromFilePath(logoPath);
+      await this.client.sendMessage(to, logo, {
+        caption: messages.numberNotFound,
+      });
+      this.pendingRegistrations[to] = { phone: to, step: 0 };
+    }
+
+    const registrationHandler = async (responseMsg) => {
+      if (responseMsg.from === to) {
+        if (responseMsg.body.toLowerCase() === "si") {
+          await this.client.sendMessage(to, messages.name);
+          this.pendingRegistrations[to] = { phone: to, step: 1 };
+        } else if (responseMsg.body.toLowerCase() === "no") {
+          await this.client.sendMessage(to, messages.noRegister);
+        }
+      }
+    };
+
+    this.client.once("message_create", registrationHandler);
+  }
+
+  async sendGreetingMessage(to, name) {
     const logoPath = path.resolve(__dirname, "./assets/img/logo.jpg");
     const logo = MessageMedia.fromFilePath(logoPath);
-    await this.client.sendMessage(to, logo);
-
-    await this.client
-      .sendMessage(to, " Hola👋" + messages.greeting)
-      .then((res) => {
-        console.log("Saludo enviado exitosamente", res.body);
-      })
-      .catch((err) => {
-        console.error("Error al enviar el saludo:", err);
-      });
+    await this.client.sendMessage(to, logo, {
+      caption: "Hola👋 *" + name + "* " + messages.greeting,
+    });
   }
 
   async sendInformation(to) {
@@ -154,9 +154,11 @@ class MessageHandler {
     const product2 = MessageMedia.fromFilePath(product2Path);
     await this.client.sendMessage(to, product2, { caption: messages.product2 });
 
-    const product3Path = path.resolve(__dirname, "./assets/img/product3.gif");
-    const product3 = MessageMedia.fromFilePath(product3Path);
-    await this.client.sendMessage(to, product3, { caption: messages.product3 });
+    const product3Path = path.resolve(__dirname, "./assets/video/product3.mp4");
+    const product3 = MessageMedia.fromUrl(product3Path);
+    await this.client.sendMessage(to, product3, {
+      caption: messages.product3,sendVideoAsGif: true,
+    });
 
     const product4Path = path.resolve(__dirname, "./assets/img/product4.png");
     const product4 = MessageMedia.fromFilePath(product4Path);
@@ -216,7 +218,7 @@ class MessageHandler {
         console.error("Error al enviar los pedidos:", err);
       });
 
-    const pdfPath = "./assets/install.pdf";
+    const pdfPath = path.resolve(__dirname, "./assets/install.pdf");
     const pdfMedia = MessageMedia.fromFilePath(pdfPath);
 
     await this.client

@@ -39,5 +39,11 @@ const messages = {
     "- Soluciones personalizadas según tus necesidades.\n" +
     "- Entrega a tiempo y dentro del presupuesto.\n\n" +
     "¡No te pierdas la oportunidad de llevar tu empresa al siguiente nivel con nuestra ayuda! ¿Listo para comenzar?",
+    email: "📧 Por favor, ingresa tu email:",
+    register: "¡Registro completado! 🎉",
+    numberNotFound: "No encontramos tu número en nuestra base de datos. ¿Deseas registrarte? (responde 'sí' o 'no')",
+    name: "✏️ Por favor, ingresa tu nombre:",
+    noRegister: "👌 Entendido. Si cambias de opinión, no dudes en decírnoslo.",
+    invalidEmail: "El email no es válido. Por favor, ingresa un email válido: 📧"
 };
 export default messages;
