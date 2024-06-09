@@ -24,7 +24,7 @@ const messages = {
     " b. 🔄 Actualizaciones y parches\n" +
     " c. 📚 Documentación y guías de usuario\n" +
     "Responde con la letra de la opción que deseas.",
-    install:
+  install:
     "¡Entiendo que estás experimentando problemas de instalación! Para ayudarte, te enviaré un archivo PDF con las instrucciones detalladas de instalación de nuestros productos. Por favor, espera un momento mientras lo preparo para ti. ⚙️📄",
   updates:
     "Te invito a visitar nuestro sitio web donde podrás encontrar información detallada sobre las últimas actualizaciones y parches disponibles para nuestros productos. 🌐🛠️\n[https://wwebjs.dev/guide/creating-your-bot/#run-your-bot]",
@@ -39,21 +39,32 @@ const messages = {
     "- Soluciones personalizadas según tus necesidades.\n" +
     "- Entrega a tiempo y dentro del presupuesto.\n\n" +
     "¡No te pierdas la oportunidad de llevar tu empresa al siguiente nivel con nuestra ayuda! ¿Listo para comenzar?",
-    email: "📧 Por favor, ingresa tu email:",
-    register: "¡Registro completado! 🎉",
-    numberNotFound: "No encontramos tu número en nuestra base de datos. ¿Deseas registrarte? (responde 'sí' o 'no')",
-    name: "✏️ Por favor, ingresa tu nombre:",
-    noRegister: "👌 Entendido. Si cambias de opinión, no dudes en decírnoslo.",
-    invalidEmail: "El email no es válido. Por favor, ingresa un email válido: 📧",
-    schedule: "Todas las citas agendas se llevaran acabo en:",
-    scheduleConfirmed: "Aun así quiere agendar una cita (responde 'si' o 'no')",
-    formatDate: "Por favor, ingresa la fecha de la cita (en formato AAAA-MM-DD):",
-    noSchedule: "Entendido. Si cambias de opinión, no dudes en decírnoslo.",
-    formatHour: "Por favor, ingresa la hora de la cita (en formato HH:MM):",
-    invalidDate: "Fecha inválida. Por favor, ingresa la fecha en el formato correcto (AAAA-MM-DD):",
-    invalidHour: "Hora inválida. Por favor, ingresa la hora en el formato correcto (HH:MM):",
-    subjectAppointment: "Por favor, ingresa el asunto de la cita:",
-    addAppointment: "Si gusta puede agregar este evento a su calendario.",
-    existSchedule: "Esa hora y fecha ya estan ocupadas o no son laborables. Quiere escoger otro fecha o hora? (si/no)"
+  email: "📧 Por favor, ingresa tu email:",
+  register: "¡Registro completado! 🎉",
+  numberNotFound:
+    "No encontramos tu número en nuestra base de datos. ¿Deseas registrarte? (responde 'sí' o 'no')",
+  name: "✏️ Por favor, ingresa tu nombre:",
+  noRegister: "👌 Entendido. Si cambias de opinión, no dudes en decírnoslo.",
+  invalidEmail: "El email no es válido. Por favor, ingresa un email válido: 📧",
+  schedule: "📍 Todas las citas agendadas se llevarán a cabo en:",
+  scheduleConfirmed:
+    "🤔 Aun así quiere agendar una cita? (responde 'si' o 'no')",
+  formatDate:
+    "📅 Por favor, ingresa la fecha de la cita (en formato AAAA-MM-DD):",
+  noSchedule: "👌 Entendido. Si cambias de opinión, no dudes en decírnoslo.",
+  formatHour: "⏰ Por favor, ingresa la hora de la cita (en formato HH:MM):",
+  invalidDate:
+    "❌ Fecha inválida. Por favor, ingresa la fecha en el formato correcto (AAAA-MM-DD):",
+  invalidHour:
+    "❌ Hora inválida. Por favor, ingresa la hora en el formato correcto (HH:MM):",
+  subjectAppointment: "📝 Por favor, ingresa el asunto de la cita:",
+  succesfullAppointment: "✅ Se ha agendado su cita el día:",
+  addAppointment: "📅 Si gusta, puede agregar este evento a su calendario.",
+  existSchedule:
+    "⚠️ Esa hora y fecha ya están ocupadas o no son laborables. ¿Quiere escoger otra fecha o hora? (si/no)",
+  comments:
+    "💬 Sus comentarios o sugerencias son de mucha ayuda para nosotros. Por favor escríbalos a continuación:",
+  thankYouForComment:
+    "🙏 Gracias por su comentario, lo tomaremos en cuenta para seguir mejorando 😊",
 };
 export default messages;

@@ -8,6 +8,7 @@ import {
   registerUser,
   addSchedule,
   existSchedule,
+  addComment,
 } from "./func/services.functions.js";
 
 import {
@@ -35,6 +36,7 @@ class MessageHandler {
     this.client = client;
     this.pendingRegistrations = {}; // Para almacenar el estado de registro de los usuarios
     this.pendingSchedules = {}; // Para almacenar el estado de las citas pendientes
+    this.pendingComment = {}; //Para almacenar el estado del comentario
     this.initialize();
   }
 
@@ -95,6 +97,10 @@ class MessageHandler {
     const greetings = ["hola", "buenos", "buenas", "hey", "hi", "hello"];
     if (this.pendingSchedules[msg.from]) {
       await this.handlePendingSchedule(msg, user);
+      return;
+    }
+    if (this.pendingComment[msg.from]) {
+      await this.handlePendingComment(msg, user);
       return;
     }
     if (validKeyWord(lowerCaseMessage, greetings)) {
@@ -247,7 +253,7 @@ class MessageHandler {
       }
       scheduleState.step = 4;
 
-      if (existSchedule(scheduleState)) {
+      if (await existSchedule(scheduleState)) {
         await this.client.sendMessage(msg.from, messages.existSchedule);
         scheduleState.step = 1;
       }
@@ -284,18 +290,31 @@ END:VCALENDAR`;
         console.log("Video enviado exitosamente");
       });
 
-      await this.client.sendMessage(msg.from, messages.scheduleConfirmed);
-      addSchedule(scheduleState, user);
+      await this.client.sendMessage(
+        msg.from,
+        `${messages.succesfullAppointment} *${scheduleState.date}* a las *${scheduleState.time}*`
+      );
+      await addSchedule(scheduleState, user);
       delete this.pendingSchedules[msg.from];
     }
   }
 
+  ///** Activa el proceso de realizar un comentario o sugerencia*/
   async sendComment(to) {
-    //TODO: Debe estar registrado si no lo esta registrar
-    //TODO: Ingresar el comentario
+    await this.client.sendMessage(to, messages.comments);
+    this.pendingComment[to] = { step: 1 };
+  }
+
+  //** Anade el comentario a la base de datos*/
+  async handlePendingComment(msg, user) {
+    const comment = msg.body.trim();
+    await addComment({ content: comment, id_user: user.id });
+    await this.client.sendMessage(msg.from, messages.thankYouForComment);
+    delete this.pendingComment[msg.from];
+
     const videoPath = path.resolve(__dirname, "./assets/video/v3.mp4");
     const v3 = MessageMedia.fromFilePath(videoPath);
-    await this.client.sendMessage(to, v3).then((res) => {
+    await this.client.sendMessage(msg.from, v3).then((res) => {
       console.log("video enviado exitosamente");
     });
   }
@@ -335,7 +354,7 @@ END:VCALENDAR`;
   }
 
   async sendDocuments(to) {
-    await this.client.sendMessage(to, messages.ducumentsGuide);
+    await this.client.sendMessage(to, messages.documentsGuide);
   }
 
   async sendDefaultResponse(msg) {
