@@ -46,6 +46,14 @@ const messages = {
     noRegister: "👌 Entendido. Si cambias de opinión, no dudes en decírnoslo.",
     invalidEmail: "El email no es válido. Por favor, ingresa un email válido: 📧",
     schedule: "Todas las citas agendas se llevaran acabo en:",
-    scheduleConfirmed: "Aun así quiere agendar una cita (responde 'si' o 'no')"
+    scheduleConfirmed: "Aun así quiere agendar una cita (responde 'si' o 'no')",
+    formatDate: "Por favor, ingresa la fecha de la cita (en formato AAAA-MM-DD):",
+    noSchedule: "Entendido. Si cambias de opinión, no dudes en decírnoslo.",
+    formatHour: "Por favor, ingresa la hora de la cita (en formato HH:MM):",
+    invalidDate: "Fecha inválida. Por favor, ingresa la fecha en el formato correcto (AAAA-MM-DD):",
+    invalidHour: "Hora inválida. Por favor, ingresa la hora en el formato correcto (HH:MM):",
+    subjectAppointment: "Por favor, ingresa el asunto de la cita:",
+    addAppointment: "Si gusta puede agregar este evento a su calendario.",
+    existSchedule: "Esa hora y fecha ya estan ocupadas o no son laborables. Quiere escoger otro fecha o hora? (si/no)"
 };
 export default messages;

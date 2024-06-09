@@ -1,18 +1,14 @@
 import pkg from "whatsapp-web.js";
 import messages from "./messages.js";
-import {
-  searchPhone,
-  validKeyWord,
-  registerUser,
-  validateEmail,
-  formatIcsDateTime,
-  incrementHour,
-  validateDate,
-  validateTime,
-} from "./methods.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import {
+  searchPhone,
+  registerUser,
+  addSchedule,
+  existSchedule,
+} from "./func/services.functions.js";
 
 import {
   informacionKeywords,
@@ -20,6 +16,15 @@ import {
   agendarKeywords,
   comentariosKeywords,
 } from "./keysWord.js";
+
+import {
+  validKeyWord,
+  validateEmail,
+  formatIcsDateTime,
+  incrementHour,
+  validateDate,
+  validateTime,
+} from "./func/functions.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -211,54 +216,41 @@ class MessageHandler {
     this.pendingSchedules[to] = { step: 1 };
   }
 
-  async handlePendingSchedule(msg) {
+  async handlePendingSchedule(msg, user) {
     const scheduleState = this.pendingSchedules[msg.from];
 
     if (scheduleState.step === 1) {
       if (msg.body.toLowerCase() === "si") {
-        await this.client.sendMessage(
-          msg.from,
-          "Por favor, ingresa la fecha de la cita (en formato AAAA-MM-DD):"
-        );
+        await this.client.sendMessage(msg.from, messages.formatDate);
         scheduleState.step = 2;
       } else if (msg.body.toLowerCase() === "no") {
-        await this.client.sendMessage(
-          msg.from,
-          "Entendido. Si cambias de opinión, no dudes en decírnoslo."
-        );
+        await this.client.sendMessage(msg.from, messages.noSchedule);
         delete this.pendingSchedules[msg.from];
       }
     } else if (scheduleState.step === 2) {
       const date = msg.body.trim();
       if (validateDate(date)) {
         scheduleState.date = date;
-        await this.client.sendMessage(
-          msg.from,
-          "Por favor, ingresa la hora de la cita (en formato HH:MM):"
-        );
+        await this.client.sendMessage(msg.from, messages.formatHour);
         scheduleState.step = 3;
       } else {
-        await this.client.sendMessage(
-          msg.from,
-          "Fecha inválida. Por favor, ingresa la fecha en el formato correcto (AAAA-MM-DD):"
-        );
+        await this.client.sendMessage(msg.from, messages.invalidDate);
       }
     } else if (scheduleState.step === 3) {
       const time = msg.body.trim();
       if (validateTime(time)) {
         scheduleState.time = time;
-        await this.client.sendMessage(
-          msg.from,
-          "Por favor, ingresa el asunto de la cita:"
-        );
+        await this.client.sendMessage(msg.from, messages.subjectAppointment);
         scheduleState.step = 4;
       } else {
-        await this.client.sendMessage(
-          msg.from,
-          "Hora inválida. Por favor, ingresa la hora en el formato correcto (HH:MM):"
-        );
+        await this.client.sendMessage(msg.from, messages.invalidHour);
       }
       scheduleState.step = 4;
+
+      if (existSchedule(scheduleState)) {
+        await this.client.sendMessage(msg.from, messages.existSchedule);
+        scheduleState.step = 1;
+      }
     } else if (scheduleState.step === 4) {
       scheduleState.subject = msg.body.trim();
 
@@ -282,7 +274,7 @@ END:VCALENDAR`;
 
       const eventMedia = MessageMedia.fromFilePath(eventPath);
       await this.client.sendMessage(msg.from, eventMedia, {
-        caption: "Si gusta puede agregar este evento a su calendario.",
+        caption: messages.addAppointment,
       });
 
       // Enviar video adicional
@@ -293,6 +285,7 @@ END:VCALENDAR`;
       });
 
       await this.client.sendMessage(msg.from, messages.scheduleConfirmed);
+      addSchedule(scheduleState, user);
       delete this.pendingSchedules[msg.from];
     }
   }
