@@ -10,9 +10,10 @@ import {
   addSchedule,
   existSchedule,
   addComment,
-  projectByPhone, 
+  projectByPhone,
   generateReports,
-  paymentByProyect
+  paymentByProyect,
+  messageReports,
 } from "./func/services.functions.js";
 
 import {
@@ -30,6 +31,8 @@ import {
   validateDate,
   validateTime,
 } from "./func/functions.js";
+
+import { createHTML, generatePDF } from './repots.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename); //*para obtener rutas de assets o ducumentos
@@ -297,13 +300,6 @@ END:VCALENDAR`;
         caption: messages.addAppointment,
       });
 
-      // Enviar video adicional
-      const videoPath = path.resolve(__dirname, "./assets/video/v2.mp4");
-      const v2 = MessageMedia.fromFilePath(videoPath);
-      await this.client.sendMessage(msg.from, v2).then((res) => {
-        console.log("Video enviado exitosamente");
-      });
-
       await this.client.sendMessage(
         msg.from,
         `${messages.succesfullAppointment} *${scheduleState.date}* a las *${scheduleState.time}*`
@@ -381,12 +377,12 @@ END:VCALENDAR`;
 
   async sendProjectStatus(to) {
     const projects = await projectByPhone(to);
-    
+
     if (!projects) {
       await this.client.sendMessage(to, messages.noProject);
     } else {
       projects.forEach(async (project) => {
-        const payproyect = await paymentByProyect(project.id)
+        const payproyect = await paymentByProyect(project.id);
         await this.client.sendMessage(
           to,
           `Su proyecto ${project.name} se encuentra en fase de ${project.status}\n
@@ -396,10 +392,26 @@ END:VCALENDAR`;
     }
   }
 
-  async sendReports(to){
-    const reports = await generateReports();
+  async sendReports(to) {
+    const reports = await messageReports();
     await this.client.sendMessage(to, reports);
-    //TODO: Repostes en dpf
+
+    const reportData = await generateReports();
+
+    // Crear contenido HTML
+    const htmlContent = createHTML(reportData);
+
+    // Generar PDF
+    const pdfBuffer = await generatePDF(htmlContent);
+
+    // Guardar PDF localmente
+    fs.writeFileSync(path.resolve(__dirname, "./assets/report.pdf"), pdfBuffer);
+
+    // Enviar PDF por WhatsApp
+    const pdfPath = path.resolve(__dirname, "./assets/report.pdf");
+    const pdfMedia = MessageMedia.fromFilePath(pdfPath);
+
+    await client.sendMessage(to, pdfMedia);
   }
 
   async sendDefaultResponse(msg) {

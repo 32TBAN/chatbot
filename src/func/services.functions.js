@@ -5,7 +5,6 @@ const searchPhone = async (phone) => {
     const response = await axios.get("http://localhost:4000/users");
     const allUsers = response.data;
     const user = allUsers.find((x) => x.phone === phone);
-    // Registro en consola para ver el resultado de la búsqueda
     return user || null;
   } catch (error) {
     console.error("Error al buscar el teléfono:", error);
@@ -119,12 +118,42 @@ const paymentByProyect = async (id_project) => {
 };
 
 const generateReports = async () => {
-  const newClients = await fetchNewClientsFromDB();
-  const reportedPortfolio = await fetchReportedPortfolioFromDB();
-  const collectedPortfolio = await fetchCollectedPortfolioFromDB();
+  try {
+    const response1 = await axios.get("http://localhost:4000/getNewClients");
+    const response2 = await axios.get("http://localhost:4000/getPortfolio");
+    const response3 = await axios.get(
+      "http://localhost:4000/getCollectedPortfolio"
+    );
 
-  return `Reportes:\nNuevos Clientes: ${newClients}\nCartera Reportada: ${reportedPortfolio}\nCartera Cobrada: ${collectedPortfolio}\n
-  Puede ver mas detalles aquí`;
+    const newClients = response1.data;
+    const reportedPortfolio = response2.data;
+    const collectedPortfolio = response3.data;
+
+    const newClientsReport = newClients
+      .map((client) => `- ${client.name} (${client.email})`)
+      .join("\n");
+    const reportedPortfolioReport = reportedPortfolio
+      .map((project) => `- ${project.name} (Estado: ${project.status})`)
+      .join("\n");
+    const collectedPortfolioReport = collectedPortfolio
+      .map((project) => `- ${project.name} (Estado: ${project.status})`)
+      .join("\n");
+
+    return {
+      newClientsReport,
+      reportedPortfolioReport,
+      collectedPortfolioReport,
+    };
+  } catch (error) {
+    console.error("Error generando reportes:", error);
+    throw error;
+  }
+};
+
+const messageReports = async () => {
+  const reportData = await generateReports();
+
+  return `📊 Reportes:\n\n👥 Nuevos Clientes:\n${reportData.newClientsReport}\n\n📂 Cartera Reportada:\n${reportData.reportedPortfolioReport}\n\n💼 Cartera Cobrada:\n${reportData.collectedPortfolioReport}\n\nPuede ver más detalles aquí.`;
 };
 
 export {
@@ -136,4 +165,5 @@ export {
   projectByPhone,
   generateReports,
   paymentByProyect,
+  messageReports,
 };

@@ -4,6 +4,8 @@ const morgan = require("morgan")
 const userRoutes = require("./routes/users.routes.js")
 const scheduleRoutes = require("./routes/schedule.routes.js")
 const commentRoutes = require("./routes/commets.routes.js")
+const playmentsRoutes = require('./routes/playments.routes.js')
+const projectsRoutes = require('./routes/project.routes.js')
 
 const app = express();
 
@@ -14,7 +16,8 @@ app.use(express.json())
 app.use(userRoutes);
 app.use(scheduleRoutes);
 app.use(commentRoutes);
-
+app.use(playmentsRoutes)
+app.use(projectsRoutes)
 
 app.use((err, req,res, next) => {
     return res.json({
