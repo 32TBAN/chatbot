@@ -54,7 +54,7 @@ const existSchedule = async (newSchedule) => {
       (newHour === 12 && newMinute > 0) ||
       (newHour === 18 && newMinute > 0)
     ) {
-      console.log("está fuera del horario laborable")
+      console.log("está fuera del horario laborable");
       return true; // Indica que la hora de la cita está fuera del horario laborable
     }
 
@@ -71,7 +71,7 @@ const existSchedule = async (newSchedule) => {
           (newHour === existingHour + 1 && newMinute < existingMinute) || // Nueva cita termina antes de la existente
           (newHour + 1 === existingHour && newMinute > existingMinute) // Nueva cita comienza antes de que termine la existente
         ) {
-          console.log("hay un conflicto de horario")
+          console.log("hay un conflicto de horario");
           return true; // Indica que hay un conflicto de horario
         }
       }
@@ -84,16 +84,56 @@ const existSchedule = async (newSchedule) => {
   }
 };
 
-const addComment = async (comment) =>{
+const addComment = async (comment) => {
   try {
-    await axios.post("http://localhost:4000/comment",{
+    await axios.post("http://localhost:4000/comment", {
       content: comment.content,
-      id_user: comment.id_user
-    })
-
+      id_user: comment.id_user,
+    });
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
-export { searchPhone, registerUser, addSchedule, existSchedule, addComment };
+const projectByPhone = async (phone) => {
+  try {
+    const user = searchPhone(phone);
+    const responde = await axios.get(
+      `http://localhost:4000/project/${user.id}`
+    );
+    return responde.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const paymentByProyect = async (id_project) => {
+  try {
+    const responde = await axios.get(
+      `http://localhost:4000/payment/${id_project}`
+    );
+    return responde.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const generateReports = async () => {
+  const newClients = await fetchNewClientsFromDB();
+  const reportedPortfolio = await fetchReportedPortfolioFromDB();
+  const collectedPortfolio = await fetchCollectedPortfolioFromDB();
+
+  return `Reportes:\nNuevos Clientes: ${newClients}\nCartera Reportada: ${reportedPortfolio}\nCartera Cobrada: ${collectedPortfolio}\n
+  Puede ver mas detalles aquí`;
+};
+
+export {
+  searchPhone,
+  registerUser,
+  addSchedule,
+  existSchedule,
+  addComment,
+  projectByPhone,
+  generateReports,
+  paymentByProyect,
+};

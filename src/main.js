@@ -10,7 +10,7 @@ const client = new Client({
     executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
 },
   authStrategy: new LocalAuth({
-    dataPath: "sessions",
+    dataPath: "sessions", 
   }),
   webVersionCache: {
     type: "remote",
@@ -20,13 +20,14 @@ const client = new Client({
 
 client.on("ready", () => {
   console.log("Client is ready!");
-  new MessageHandler(client)
-  new AutomatedMessageHandler(client, 30); // Enviar mensajes de promoción cada n minutos
+  new MessageHandler(client)//* clase de envio de mensajes
+  new AutomatedMessageHandler(client, 30); // * Enviar mensajes de promoción cada n minutos
 });
 
 client.on("qr", (qr) => {
   qrcode.generate(qr, { small: true });
 });
+
 
 client.initialize().catch((err) => {
   console.error("Error al inicializar el cliente:", err);

@@ -2,7 +2,7 @@ const messages = {
   greeting:
     "😊 Aquí están algunas de las opciones que ofrecemos: \n\n" +
     "1. ✅ Información sobre nuestros productos\n" +
-    "2. 🔎 Consultas de sobre las aplicaciones\n" +
+    "2. 🔎 Consultas de sobre los productos\n" +
     "3. 🗓️ Agendar una cita para una propuesta personalizada para tu proyecto.\n" +
     "4. 📝 Comentarios o sugerencias\n\n" +
     "Responde con el número de la opción que deseas o una palabra clave.",
@@ -22,7 +22,9 @@ const messages = {
     "Tenemos varias áreas de consulta para elegir. ¿Cuál de estos servicios te gustaría explorar?\n\n" +
     " a. 🚧 Problemas de instalación\n" +
     " b. 🔄 Actualizaciones y parches\n" +
-    " c. 📚 Documentación y guías de usuario\n" +
+    " c. 💵 Precios\n" +
+    " d. ⌛ Promociones\n" +
+    " e. 📊 Estado de sus proyectos\n" +
     "Responde con la letra de la opción que deseas.",
   install:
     "¡Entiendo que estás experimentando problemas de instalación! Para ayudarte, te enviaré un archivo PDF con las instrucciones detalladas de instalación de nuestros productos. Por favor, espera un momento mientras lo preparo para ti. ⚙️📄",
@@ -44,14 +46,14 @@ const messages = {
   numberNotFound:
     "No encontramos tu número en nuestra base de datos. ¿Deseas registrarte? (responde 'sí' o 'no')",
   name: "✏️ Por favor, ingresa tu nombre:",
-  noRegister: "👌 Entendido. Si cambias de opinión, no dudes en decírnoslo.",
+  noRegister: "👌 Entendido. Si cambias de opinión, no dudes en decirmelo.",
   invalidEmail: "El email no es válido. Por favor, ingresa un email válido: 📧",
   schedule: "📍 Todas las citas agendadas se llevarán a cabo en:",
   scheduleConfirmed:
     "🤔 Aun así quiere agendar una cita? (responde 'si' o 'no')",
   formatDate:
     "📅 Por favor, ingresa la fecha de la cita (en formato AAAA-MM-DD):",
-  noSchedule: "👌 Entendido. Si cambias de opinión, no dudes en decírnoslo.",
+  noSchedule: "👌 Entendido. Si cambias de opinión, no dudes en decirmelo.",
   formatHour: "⏰ Por favor, ingresa la hora de la cita (en formato HH:MM):",
   invalidDate:
     "❌ Fecha inválida. Por favor, ingresa la fecha en el formato correcto (AAAA-MM-DD):",
@@ -66,5 +68,29 @@ const messages = {
     "💬 Sus comentarios o sugerencias son de mucha ayuda para nosotros. Por favor escríbalos a continuación:",
   thankYouForComment:
     "🙏 Gracias por su comentario, lo tomaremos en cuenta para seguir mejorando 😊",
+  paymentReminder:
+    "🔔 Recordatorio de Pago: Estimado cliente, su pago de [monto] vence el [fecha]. Por favor, asegúrese de realizar su pago a tiempo para evitar recargos. Gracias por su atención.",
+  overduePayment:
+    "⚠️ Aviso de Pago Atrasado: Estimado cliente, notamos que su pago de [monto] con vencimiento el [fecha] aún no ha sido recibido. Le pedimos que realice el pago lo antes posible para evitar interrupciones en el servicio. Si ya realizó el pago, por favor ignore este mensaje.",
+  discountOffer:
+    "🎉 Oferta Especial: Obtén un 10% de descuento en tu próxima compra con el código ''Gatitos''. Esta oferta es válida hasta el 24 de junio de 2024. ¡No te lo pierdas!",
+  pricingMessage:
+    "💵 Los precios dependerán de las necesidades específicas del software para tu negocio. Aquí tienes algunos precios indicativos para tu guía: \n\n" +
+    "- Página web estática: $500 - $5,000\n" +
+    "- Página web dinámica: $5,000 - $15,000\n" +
+    "- Aplicación móvil: $10,000 - $50,000\n" +
+    "- Aplicación web: $15,000 - $50,000\n\n" +
+    "Estos precios son aproximados y pueden variar según los requerimientos específicos de tu proyecto. Te invitamos a agendar una cita para una propuesta personalizada.",
+  promo1:
+    "🌟 ¡Oferta de Verano! 🌟 Obtén un 20% de descuento en el desarrollo de tu nueva página web. Esta oferta es válida hasta el 31 de julio de 2024. ¡No te pierdas esta oportunidad! Contáctanos para más detalles.",
+  promo2:
+    "🚀 ¡Lanzamiento Especial! 🚀 Desarrolla tu aplicación móvil con nosotros y recibe un 15% de descuento. Oferta válida para los primeros 10 clientes. ¡Aprovecha y lleva tu negocio al siguiente nivel!",
+  promo3:
+    "🎉 ¡Descuento por Tiempo Limitado! 🎉 Contrata el desarrollo de una aplicación web antes del 30 de junio de 2024 y obtén un 10% de descuento. ¡No dejes pasar esta oferta especial!",
+  promo4:
+    "💼 ¡Promoción para Nuevos Clientes! 💼 Regístrate con nosotros y recibe un 25% de descuento en tu primer proyecto de desarrollo de software. Oferta válida hasta el 31 de agosto de 2024.",
+  promo5:
+    "🎁 ¡Oferta de Fin de Año! 🎁 Planifica tu proyecto de desarrollo de software con nosotros antes del 31 de diciembre de 2024 y recibe un 20% de descuento. ¡Comienza el nuevo año con las herramientas adecuadas para el éxito!",
+    noProject: "No tiene ningun proyecto todavía 🚫"
 };
 export default messages;

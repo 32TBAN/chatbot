@@ -1,14 +1,18 @@
 import pkg from "whatsapp-web.js";
-import messages from "./messages.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import messages from "./messages.js";
+
 import {
   searchPhone,
   registerUser,
   addSchedule,
   existSchedule,
   addComment,
+  projectByPhone, 
+  generateReports,
+  paymentByProyect
 } from "./func/services.functions.js";
 
 import {
@@ -28,22 +32,23 @@ import {
 } from "./func/functions.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(__filename); //*para obtener rutas de assets o ducumentos
+
 const { MessageMedia, Location } = pkg;
 
 class MessageHandler {
   constructor(client) {
     this.client = client;
-    this.pendingRegistrations = {}; // Para almacenar el estado de registro de los usuarios
-    this.pendingSchedules = {}; // Para almacenar el estado de las citas pendientes
-    this.pendingComment = {}; //Para almacenar el estado del comentario
+    this.pendingRegistrations = {}; // * Para almacenar el estado de registro de los usuarios
+    this.pendingSchedules = {}; // * Para almacenar el estado de las citas pendientes
+    this.pendingComment = {}; // * Para almacenar el estado del comentario
     this.initialize();
   }
 
   initialize() {
     this.client.on("message", this.handleMessage.bind(this));
   }
-
+  // * Manejo de mensajes
   async handleMessage(msg) {
     console.log("De: ", msg.from);
 
@@ -51,14 +56,17 @@ class MessageHandler {
       msg.from != "593979353728@c.us" &&
       msg.from != "593984635564@c.us" &&
       msg.from != "593984493368@c.us" &&
-      msg.from != "593984725398@c.us"
+      msg.from != "593984725398@c.us" &&
+      msg.from != "593995547555@c.us"
     ) {
+      // * Adicional para pruebas, ignora numeros
       console.log("Mensaje ignorado de:", msg.from);
       return;
     }
 
     console.log("Mensaje: ", msg.body);
-    // Manejo de registro pendiente
+
+    // * Manejo de registro pendiente
     if (this.pendingRegistrations[msg.from]) {
       console.log(this.pendingRegistrations);
       await this.handlePendingRegistration(msg);
@@ -118,7 +126,13 @@ class MessageHandler {
     } else if (lowerCaseMessage === "b") {
       await this.sendUpdate(msg.from);
     } else if (lowerCaseMessage === "c") {
-      await this.sendDocuments(msg.from);
+      await this.sendPrice(msg.from);
+    } else if (lowerCaseMessage === "d") {
+      await this.sendPromo(msg.from);
+    } else if (lowerCaseMessage == "e") {
+      await this.sendProjectStatus(msg.from);
+    } else if (lowerCaseMessage == "!reportes") {
+      await this.sendReports(msg.from);
     } else {
       await this.sendDefaultResponse(msg);
     }
@@ -353,8 +367,39 @@ END:VCALENDAR`;
       });
   }
 
-  async sendDocuments(to) {
-    await this.client.sendMessage(to, messages.documentsGuide);
+  async sendPrice(to) {
+    await this.client.sendMessage(to, messages.pricingMessage);
+  }
+
+  async sendPromo(to) {
+    await this.client.sendMessage(to, messages.promo1);
+    await this.client.sendMessage(to, messages.promo2);
+    await this.client.sendMessage(to, messages.promo3);
+    await this.client.sendMessage(to, messages.promo4);
+    await this.client.sendMessage(to, messages.promo5);
+  }
+
+  async sendProjectStatus(to) {
+    const projects = await projectByPhone(to);
+    
+    if (!projects) {
+      await this.client.sendMessage(to, messages.noProject);
+    } else {
+      projects.forEach(async (project) => {
+        const payproyect = await paymentByProyect(project.id)
+        await this.client.sendMessage(
+          to,
+          `Su proyecto ${project.name} se encuentra en fase de ${project.status}\n
+          puede pagar hasta el ${payproyect.due_date}`
+        );
+      });
+    }
+  }
+
+  async sendReports(to){
+    const reports = await generateReports();
+    await this.client.sendMessage(to, reports);
+    //TODO: Repostes en dpf
   }
 
   async sendDefaultResponse(msg) {
