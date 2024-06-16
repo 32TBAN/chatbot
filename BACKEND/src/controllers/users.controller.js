@@ -40,4 +40,16 @@ const getUser = async (req, res, next) => {
   }
 };
 
-module.exports = { createUser, getAllUser, getUser };
+const getUserID = async (req, res, next) => {
+  try {
+    const { id_user } = req.params;
+    const user = await pool.query("SELECT * FROM USERS WHERE ID = $1", [
+      id_user,
+    ]);
+    res.json(user.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { createUser, getAllUser, getUser, getUserID };

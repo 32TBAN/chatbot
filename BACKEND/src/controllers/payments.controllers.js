@@ -43,9 +43,18 @@ const getCollectedPortfolio = async (req, res, next) => {
     }
 };
 
+const getAllPlatments = async (req, res, next) => {
+    try {
+        const result = await pool.query("SELECT * FROM PAYMENTS")
+        res.json(result.rows)
+    } catch (error) {
+        next(error)
+    }
+}
+
 module.exports = {
     getPaymentByIdProject,
     getNewClients,
     getPortfolio,
-    getCollectedPortfolio
+    getCollectedPortfolio, getAllPlatments
 };

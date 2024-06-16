@@ -1,4 +1,4 @@
-import axios, { all } from "axios";
+import axios from "axios";
 
 const searchPhone = async (phone) => {
   try {
@@ -96,7 +96,7 @@ const addComment = async (comment) => {
 
 const projectByPhone = async (phone) => {
   try {
-    const user = searchPhone(phone);
+    const user = await searchPhone(phone);
     const responde = await axios.get(
       `http://localhost:4000/project/${user.id}`
     );
@@ -153,9 +153,26 @@ const generateReports = async () => {
 const messageReports = async () => {
   const reportData = await generateReports();
 
-  return `📊 Reportes:\n\n👥 Nuevos Clientes:\n${reportData.newClientsReport}\n\n📂 Cartera Reportada:\n${reportData.reportedPortfolioReport}\n\n💼 Cartera Cobrada:\n${reportData.collectedPortfolioReport}\n\nPuede ver más detalles aquí.`;
+  return `📊 Reportes:\n\n👥 Nuevos Clientes:\n${reportData.newClientsReport}\n\n📂 Cartera Reportada:\n${reportData.reportedPortfolioReport}\n\n💼 Cartera Cobrada:\n${reportData.collectedPortfolioReport}\n\nPuede ver más detalles aquí:`;
 };
 
+const getReminders = async () => {
+  const respons = await axios.get('http://localhost:4000/getAllPlatments')
+  const playments = respons.data
+  const reminders = []
+  for(const playment of playments){
+    if (playment.status == 'PENDIENTE') {
+      reminders.push(playment)
+    }
+  }
+
+  return reminders
+}
+
+const searchUserById= async (id_user) => {
+  const response = await axios.get(`http://localhost:4000/userId/${id_user}`)
+  return response.data
+}
 export {
   searchPhone,
   registerUser,
@@ -165,5 +182,5 @@ export {
   projectByPhone,
   generateReports,
   paymentByProyect,
-  messageReports,
+  messageReports,getReminders, searchUserById
 };

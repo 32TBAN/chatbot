@@ -32,7 +32,7 @@ import {
   validateTime,
 } from "./func/functions.js";
 
-import { createHTML, generatePDF } from './repots.js'
+import { generatePDF } from "./repots.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename); //*para obtener rutas de assets o ducumentos
@@ -376,19 +376,38 @@ END:VCALENDAR`;
   }
 
   async sendProjectStatus(to) {
-    const projects = await projectByPhone(to);
+    try {
+      const projects = await projectByPhone(to);
 
-    if (!projects) {
-      await this.client.sendMessage(to, messages.noProject);
-    } else {
-      projects.forEach(async (project) => {
+      if (!projects || !Array.isArray(projects) || projects.length === 0) {
+        await this.client.sendMessage(to, messages.noProject);
+        return;
+      }
+
+      for (const project of projects) {
         const payproyect = await paymentByProyect(project.id);
-        await this.client.sendMessage(
-          to,
-          `Su proyecto ${project.name} se encuentra en fase de ${project.status}\n
-          puede pagar hasta el ${payproyect.due_date}`
-        );
-      });
+        const formattedDueDate = new Date(payproyect[0].due_date)
+          .toISOString()
+          .split("T")[0];
+        const message = `
+        📋 *Estado del Proyecto*
+        
+        *Nombre del proyecto:* ${project.name}
+        *Estado actual:* ${project.status}
+        *Fecha límite de pago:* ${formattedDueDate}
+        
+        Por favor, asegúrese de realizar el pago antes de la fecha indicada.
+        
+        Gracias.
+              `;
+        await this.client.sendMessage(to, message.trim());
+      }
+    } catch (error) {
+      console.error("Error al enviar el estado del proyecto:", error);
+      await this.client.sendMessage(
+        to,
+        "Hubo un error al recuperar el estado del proyecto. Por favor, inténtelo de nuevo más tarde."
+      );
     }
   }
 
@@ -396,22 +415,58 @@ END:VCALENDAR`;
     const reports = await messageReports();
     await this.client.sendMessage(to, reports);
 
-    const reportData = await generateReports();
+    try {
+      const dataInfo = await generateReports();
 
-    // Crear contenido HTML
-    const htmlContent = createHTML(reportData);
+      // Crear el contenido HTML del PDF
+      const htmlContent = `
+        <html>
+        <head>
+          <title>Reportes</title>
+          <style>
+            body { font-family: Arial, sans-serif; }
+            h1 { text-align: center; }
+            .report { margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <h1>Reportes</h1>
+          <div class="report">
+            <h2>Nuevos Clientes</h2>
+            <pre>${dataInfo.newClientsReport}</pre>
+          </div>
+          <div class="report">
+            <h2>Cartera Reportada</h2>
+            <pre>${dataInfo.reportedPortfolioReport}</pre>
+          </div>
+          <div class="report">
+            <h2>Cartera Cobrada</h2>
+            <pre>${dataInfo.collectedPortfolioReport}</pre>
+          </div>
+        </body>
+        </html>
+      `;
 
-    // Generar PDF
-    const pdfBuffer = await generatePDF(htmlContent);
+      // Generar el PDF
+      const pdfBuffer = await generatePDF(htmlContent);
 
-    // Guardar PDF localmente
-    fs.writeFileSync(path.resolve(__dirname, "./assets/report.pdf"), pdfBuffer);
+      // Guardar el PDF en el sistema de archivos temporalmente
+      const pdfPath = path.resolve(__dirname, "./reportes.pdf");
+      fs.writeFileSync(pdfPath, pdfBuffer);
 
-    // Enviar PDF por WhatsApp
-    const pdfPath = path.resolve(__dirname, "./assets/report.pdf");
-    const pdfMedia = MessageMedia.fromFilePath(pdfPath);
+      // Enviar el PDF a través de WhatsApp
+      const pdfMedia = MessageMedia.fromFilePath(pdfPath);
+      await this.client.sendMessage(to, pdfMedia);
 
-    await client.sendMessage(to, pdfMedia);
+      // Eliminar el archivo temporal después de enviarlo
+      fs.unlinkSync(pdfPath);
+    } catch (error) {
+      console.error("Error al generar o enviar el PDF:", error);
+      await this.client.sendMessage(
+        to,
+        "Hubo un error al generar los reportes. Por favor, inténtelo de nuevo más tarde."
+      );
+    }
   }
 
   async sendDefaultResponse(msg) {
