@@ -1,5 +1,10 @@
 import axios from "axios";
 
+/** 
+ * Busca un usuario por su número de teléfono.
+ * @param {string} phone - El número de teléfono a buscar.
+ * @returns {Object|null} - El usuario encontrado o null si no se encuentra.
+ */
 const searchPhone = async (phone) => {
   try {
     const response = await axios.get("http://localhost:4000/users");
@@ -12,6 +17,13 @@ const searchPhone = async (phone) => {
   }
 };
 
+/**
+ * Registra un nuevo usuario.
+ * @param {Object} user - Los datos del usuario a registrar.
+ * @param {string} user.name - El nombre del usuario.
+ * @param {string} user.phone - El número de teléfono del usuario.
+ * @param {string} user.email - El correo electrónico del usuario.
+ */
 const registerUser = async (user) => {
   try {
     await axios.post("http://localhost:4000/user", {
@@ -24,6 +36,15 @@ const registerUser = async (user) => {
   }
 };
 
+/**
+ * Añade un nuevo horario para un usuario.
+ * @param {Object} schedule - Los datos del horario.
+ * @param {string} schedule.date - La fecha del horario.
+ * @param {string} schedule.time - La hora del horario.
+ * @param {string} schedule.subject - La descripción del horario.
+ * @param {Object} user - Los datos del usuario.
+ * @param {string} user.id - El ID del usuario.
+ */
 const addSchedule = async (schedule, user) => {
   try {
     await axios.post("http://localhost:4000/schedule", {
@@ -37,6 +58,13 @@ const addSchedule = async (schedule, user) => {
   }
 };
 
+/**
+ * Verifica si existe un conflicto de horario con una nueva cita.
+ * @param {Object} newSchedule - Los datos de la nueva cita.
+ * @param {string} newSchedule.date - La fecha de la nueva cita.
+ * @param {string} newSchedule.time - La hora de la nueva cita.
+ * @returns {boolean} - True si hay un conflicto, false si no.
+ */
 const existSchedule = async (newSchedule) => {
   try {
     const response = await axios.get("http://localhost:4000/schedules");
@@ -83,6 +111,12 @@ const existSchedule = async (newSchedule) => {
   }
 };
 
+/**
+ * Añade un comentario para un usuario.
+ * @param {Object} comment - Los datos del comentario.
+ * @param {string} comment.content - El contenido del comentario.
+ * @param {string} comment.id_user - El ID del usuario.
+ */
 const addComment = async (comment) => {
   try {
     await axios.post("http://localhost:4000/comment", {
@@ -94,6 +128,11 @@ const addComment = async (comment) => {
   }
 };
 
+/**
+ * Obtiene los proyectos asociados a un número de teléfono.
+ * @param {string} phone - El número de teléfono del usuario.
+ * @returns {Object[]} - Los proyectos asociados al usuario.
+ */
 const projectByPhone = async (phone) => {
   try {
     const user = await searchPhone(phone);
@@ -106,6 +145,11 @@ const projectByPhone = async (phone) => {
   }
 };
 
+/**
+ * Obtiene los pagos asociados a un proyecto.
+ * @param {string} id_project - El ID del proyecto.
+ * @returns {Object[]} - Los pagos asociados al proyecto.
+ */
 const paymentByProyect = async (id_project) => {
   try {
     const responde = await axios.get(
@@ -117,6 +161,10 @@ const paymentByProyect = async (id_project) => {
   }
 };
 
+/**
+ * Genera informes de nuevos clientes, cartera reportada y cartera cobrada.
+ * @returns {Object} - Los informes generados.
+ */
 const generateReports = async () => {
   try {
     const response1 = await axios.get("http://localhost:4000/getNewClients");
@@ -150,12 +198,20 @@ const generateReports = async () => {
   }
 };
 
+
+/**
+ * Genera un mensaje con los informes.
+ * @returns {string} - El mensaje con los informes.
+ */
 const messageReports = async () => {
   const reportData = await generateReports();
 
   return `📊 Reportes:\n\n👥 Nuevos Clientes:\n${reportData.newClientsReport}\n\n📂 Cartera Reportada:\n${reportData.reportedPortfolioReport}\n\n💼 Cartera Cobrada:\n${reportData.collectedPortfolioReport}\n\nPuede ver más detalles aquí:`;
 };
-
+/**
+ * Obtiene los recordatorios de pagos pendientes.
+ * @returns {Object[]} - Los recordatorios de pagos pendientes.
+ */
 const getReminders = async () => {
   const respons = await axios.get('http://localhost:4000/getAllPlatments')
   const playments = respons.data
@@ -169,10 +225,16 @@ const getReminders = async () => {
   return reminders
 }
 
+/**
+ * Busca un usuario por su ID.
+ * @param {string} id_user - El ID del usuario.
+ * @returns {Object} - Los datos del usuario.
+ */
 const searchUserById= async (id_user) => {
   const response = await axios.get(`http://localhost:4000/userId/${id_user}`)
   return response.data
 }
+
 export {
   searchPhone,
   registerUser,

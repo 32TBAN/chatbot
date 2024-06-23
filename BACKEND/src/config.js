@@ -1,4 +1,5 @@
-const {config} = require('dotenv')
+// * aquie se guardan las credenciales es solo por seguridad 
+const {config} = require('dotenv') // * para cargar configuraciones del archivo .env
 config()
 
 const db = {

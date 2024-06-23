@@ -1,6 +1,6 @@
 import puppeteer from "puppeteer";
 
-// Función para generar el PDF
+// * Función para generar el PDF
 const generatePDF = async (htmlContent) => {
   const browser = await puppeteer.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox']

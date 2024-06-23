@@ -1,8 +1,8 @@
 import pkg from "whatsapp-web.js";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
-import messages from "./messages.js";
+import path from "path"; // * MOdulo para manejar rutas
+import { fileURLToPath } from "url"; // * Es para una URl convertirla en rutas de arhivo
+import fs from "fs"; // * para manejar el sistema de archivos
+import messages from "./messages.js"; // * mensajes de respuesta del chatbot
 
 import {
   searchPhone,
@@ -14,14 +14,14 @@ import {
   generateReports,
   paymentByProyect,
   messageReports,
-} from "./func/services.functions.js";
+} from "./func/services.functions.js"; // * Funciones para el manejo con la base de datos
 
 import {
   informacionKeywords,
   consultaKeywords,
   agendarKeywords,
   comentariosKeywords,
-} from "./keysWord.js";
+} from "./keysWord.js"; // * utilizado para respuesta que de el cliente
 
 import {
   validKeyWord,
@@ -30,15 +30,16 @@ import {
   incrementHour,
   validateDate,
   validateTime,
-} from "./func/functions.js";
+} from "./func/functions.js"; // * funciones varias para funcionamiento del chatbot
 
-import { generatePDF } from "./repots.js";
+import { generatePDF } from "./repots.js"; // * Generacion de un reportes pedidos
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename); //*para obtener rutas de assets o ducumentos
 
 const { MessageMedia, Location } = pkg;
 
+// * Clase para el manejo mensajes
 class MessageHandler {
   constructor(client) {
     this.client = client;
@@ -62,7 +63,7 @@ class MessageHandler {
       msg.from != "593984725398@c.us" &&
       msg.from != "593995547555@c.us"
     ) {
-      // * Adicional para pruebas, ignora numeros
+      // * Adicional para pruebas, ignora numeros que no esten en el if
       console.log("Mensaje ignorado de:", msg.from);
       return;
     }
@@ -76,14 +77,19 @@ class MessageHandler {
       return;
     }
 
+    // * busca al usuario por el numero
     const user = await searchPhone(msg.from);
     if (user != null) {
+      // * si el usuario ya esta registrado muestra las opciones
       await this.processMessageForRegisteredUser(msg, user);
     } else {
+      // * si no lo regitra
       await this.promptRegistration(msg.from);
     }
   }
 
+    // * Manejo de registro pendiente
+    // * Dependiendo el paso en el que se encuentre se mostrara un mensaje diferente
   async handlePendingRegistration(msg) {
     const registrationState = this.pendingRegistrations[msg.from];
     if (registrationState.step === 1) {
@@ -92,7 +98,7 @@ class MessageHandler {
       await this.client.sendMessage(msg.from, messages.email);
     } else if (registrationState.step === 2) {
       registrationState.email = msg.body.trim();
-      if (validateEmail(registrationState.email)) {
+      if (validateEmail(registrationState.email)) { // * valida el email
         await registerUser(registrationState);
         delete this.pendingRegistrations[msg.from];
         await this.client.sendMessage(msg.from, messages.register);
@@ -102,6 +108,7 @@ class MessageHandler {
     }
   }
 
+  // * Procesa mensajes para usuarios registrados
   async processMessageForRegisteredUser(msg, user) {
     const lowerCaseMessage = msg.body.toLowerCase();
 
@@ -114,6 +121,7 @@ class MessageHandler {
       await this.handlePendingComment(msg, user);
       return;
     }
+    // * En todos los if valida si el usurio dijo una palabra relasionado para mostrar el mensaje o solo la letra o numero
     if (validKeyWord(lowerCaseMessage, greetings)) {
       await this.sendGreetingMessage(msg.from, user.name);
     } else if (validKeyWord(lowerCaseMessage, informacionKeywords)) {
@@ -141,6 +149,7 @@ class MessageHandler {
     }
   }
 
+    // * Solicita el registro de un nuevo usuario entrando despues al registro pendiente
   async promptRegistration(to) {
     if (!this.pendingRegistrations[to]) {
       const logoPath = path.resolve(__dirname, "./assets/img/logo.jpg");
@@ -165,6 +174,7 @@ class MessageHandler {
     this.client.once("message_create", registrationHandler);
   }
 
+  // * desde aqui hay Metodos para enviar mensajes dependiendo de la opcion
   async sendGreetingMessage(to, name) {
     const logoPath = path.resolve(__dirname, "./assets/img/logo.jpg");
     const logo = MessageMedia.fromFilePath(logoPath);
@@ -217,11 +227,11 @@ class MessageHandler {
         console.error("Error al enviar:", err);
       });
 
-    const videoPath = path.resolve(__dirname, "./assets/video/v1.mp4");
-    const v1 = MessageMedia.fromFilePath(videoPath);
-    await this.client.sendMessage(to, v1).then((res) => {
-      console.log("video enviado exitosamente");
-    });
+    // const videoPath = path.resolve(__dirname, "./assets/video/v1.mp4");
+    // const v1 = MessageMedia.fromFilePath(videoPath);
+    // await this.client.sendMessage(to, v1).then((res) => {
+    //   console.log("video enviado exitosamente");
+    // });
   }
 
   async sendAgenda(to) {
@@ -239,6 +249,7 @@ class MessageHandler {
     this.pendingSchedules[to] = { step: 1 };
   }
 
+  // * manejo para agendar una cita y denpendiendo del paso en el que se encuentre mostrara un mensaje
   async handlePendingSchedule(msg, user) {
     const scheduleState = this.pendingSchedules[msg.from];
 
@@ -277,7 +288,7 @@ class MessageHandler {
     } else if (scheduleState.step === 4) {
       scheduleState.subject = msg.body.trim();
 
-      // Crear y enviar el archivo de evento .ics
+      // * Crear y enviar el archivo de evento .ics para guardar el evento en el calendario del celular
       const eventIcsContent = `BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
@@ -322,13 +333,14 @@ END:VCALENDAR`;
     await this.client.sendMessage(msg.from, messages.thankYouForComment);
     delete this.pendingComment[msg.from];
 
-    const videoPath = path.resolve(__dirname, "./assets/video/v3.mp4");
-    const v3 = MessageMedia.fromFilePath(videoPath);
-    await this.client.sendMessage(msg.from, v3).then((res) => {
-      console.log("video enviado exitosamente");
-    });
+    // const videoPath = path.resolve(__dirname, "./assets/video/v3.mp4");
+    // const v3 = MessageMedia.fromFilePath(videoPath);
+    // await this.client.sendMessage(msg.from, v3).then((res) => {
+    //   console.log("video enviado exitosamente");
+    // });
   }
 
+  // * envia el pdf ded instalasion
   async sendInstall(to) {
     await this.client
       .sendMessage(to, messages.install)
@@ -352,6 +364,7 @@ END:VCALENDAR`;
       });
   }
 
+  //* envia informacion sobre actualizaciones
   async sendUpdate(to) {
     await this.client
       .sendMessage(to, messages.updates)
@@ -363,10 +376,12 @@ END:VCALENDAR`;
       });
   }
 
+  // * envia precios de productos
   async sendPrice(to) {
     await this.client.sendMessage(to, messages.pricingMessage);
   }
 
+  // * envia promociones
   async sendPromo(to) {
     await this.client.sendMessage(to, messages.promo1);
     await this.client.sendMessage(to, messages.promo2);
@@ -375,6 +390,7 @@ END:VCALENDAR`;
     await this.client.sendMessage(to, messages.promo5);
   }
 
+  // * envia el estado de los proyectos si es que tiene
   async sendProjectStatus(to) {
     try {
       const projects = await projectByPhone(to);
@@ -411,6 +427,7 @@ END:VCALENDAR`;
     }
   }
 
+  // * envia los reportes
   async sendReports(to) {
     const reports = await messageReports();
     await this.client.sendMessage(to, reports);
@@ -418,7 +435,7 @@ END:VCALENDAR`;
     try {
       const dataInfo = await generateReports();
 
-      // Crear el contenido HTML del PDF
+      // * Crear el contenido HTML del PDF
       const htmlContent = `
         <html>
         <head>
@@ -468,7 +485,7 @@ END:VCALENDAR`;
       );
     }
   }
-
+// * mensaje por defecto si no se reconoce una palabra clave o numero o letra
   async sendDefaultResponse(msg) {
     const defaultMessage =
       "Lo siento, no entendí tu mensaje. Por favor elige una opción:\n\n" +

@@ -1,16 +1,17 @@
-import pkg from "whatsapp-web.js";
-import qrcode from "qrcode-terminal";
-import MessageHandler from "./sendMessages.js";
-import AutomatedMessageHandler from "./automaticMessange.js";
+import pkg from "whatsapp-web.js"; // * Módulo para interactuar con WhatsApp Web
+import qrcode from "qrcode-terminal"; // * Módulo para generar códigos QR en la terminal
+import MessageHandler from "./sendMessages.js"; // * Manejador personalizado para enviar mensajes del chatbot
+import AutomatedMessageHandler from "./automaticMessange.js"; // * Manejador personalizado para enviar mensajes automatizados como promos y pagos
 
-const { Client, LocalAuth } = pkg;
+const { Client, LocalAuth } = pkg; // * Extraemos las clases necesarias del paquete whatsapp-web.js clients es para cliente de whatsspa y localAut para guardar las credenciales 
 
 const client = new Client({
   puppeteer: {
+    // * esto solo es necesario solo si se quiere obtener medias con URL
     executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
 },
   authStrategy: new LocalAuth({
-    dataPath: "sessions", 
+    dataPath: "sessions", // * Aqui se almacenaran datos de session
   }),
   webVersionCache: {
     type: "remote",
@@ -25,6 +26,7 @@ client.on("ready", () => {
 });
 
 client.on("qr", (qr) => {
+  // * se genera un código QR
   qrcode.generate(qr, { small: true });
 });
 
