@@ -20,7 +20,7 @@ class AutomatedMessageHandler {
       { message: messages.promo2, time: "34 10 * * *" },
       { message: messages.promo3, time: "33 10 * * *" },
       { message: messages.promo4, time: "32 10 * * *" },
-      { message: messages.promotionMessage, time: "30 10 * * *" },
+      { message: messages.promotionMessage, time: "38 23 * * *" },
     ];
         // * Lista de números de teléfono a los que se enviarán los mensajes
     this.phones = [
@@ -60,7 +60,7 @@ class AutomatedMessageHandler {
 
     // * Envía un mensaje promocional a un número de teléfono específico
   async sendPromotion(to, message) {
-    const logoPath = path.resolve(__dirname, "./assets/img/logo.jpg");
+    const logoPath = path.resolve(__dirname, "./assets/video/promov.mp4");
     const logo = MessageMedia.fromFilePath(logoPath);
     await this.client.sendMessage(to, logo, { caption: message });
   }
@@ -80,7 +80,7 @@ class AutomatedMessageHandler {
       let message = `Tiene un pago pendiente de $${remiders.amount}. Por favor, pague antes del ${formattedDueDate} para evitar recargos.`;
 
       let user = await searchUserById(remiders.id_user); // * BUsca el usuario por el id
-      schedule.scheduleJob("39 11 * * *", async () => {
+      schedule.scheduleJob("21 01 * * *", async () => {
         await this.client
           .sendMessage(user.phone, message)
           .then(await this.sleep(10000));  // * Envía el recordatorio y espera 10 segundos

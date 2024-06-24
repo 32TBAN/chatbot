@@ -52,9 +52,23 @@ const getAllPlatments = async (req, res, next) => {
     }
 }
 
+const addPayment =  async (req, res, next) => {
+    const { amount, dueDate, status, idUser, idProject } = req.body
+    try {
+        const result = await pool.query(
+            "INSERT INTO PAYMENTS (AMOUNT, DUE_DATE, STATUS, ID_USER, id_proyect) VALUES ($1,$2,$3,$4,$5) RETURNING *",
+            [amount, dueDate, status, idUser, idProject]
+          );
+      
+          res.json(result.rows[0]);
+    } catch (error) {
+        next(error)
+    }
+}
+
 module.exports = {
     getPaymentByIdProject,
     getNewClients,
     getPortfolio,
-    getCollectedPortfolio, getAllPlatments
+    getCollectedPortfolio, getAllPlatments, addPayment
 };

@@ -4,10 +4,12 @@ const {
   getNewClients,
   getPortfolio,
   getCollectedPortfolio,
-  getAllPlatments
+  getAllPlatments, addPayment
 } = require("../controllers/payments.controllers.js");
 
 const router = Router();
+
+router.post("/payment",addPayment)
 
 router.get("/payment/:idProject", getPaymentByIdProject);
 

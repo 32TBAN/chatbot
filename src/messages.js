@@ -63,7 +63,7 @@ const messages = {
   succesfullAppointment: "✅ Se ha agendado su cita el día:",
   addAppointment: "📅 Si gusta, puede agregar este evento a su calendario.",
   existSchedule:
-    "⚠️ Esa hora y fecha ya están ocupadas o no son laborables. ¿Quiere escoger otra fecha o hora? (si/no)",
+    "⚠️ Esa hora y fecha ya están ocupadas o no son laborables (HORAS LABORABLES DE 8:00-12:00 Y 14:00-18:00). ¿Quiere escoger otra fecha o hora? (si/no)",
   comments:
     "💬 Sus comentarios o sugerencias son de mucha ayuda para nosotros. Por favor escríbalos a continuación:",
   thankYouForComment:

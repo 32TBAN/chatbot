@@ -1,6 +1,6 @@
 import axios from "axios";
 
-/** 
+/**
  * Busca un usuario por su número de teléfono.
  * @param {string} phone - El número de teléfono a buscar.
  * @returns {Object|null} - El usuario encontrado o null si no se encuentra.
@@ -47,12 +47,14 @@ const registerUser = async (user) => {
  */
 const addSchedule = async (schedule, user) => {
   try {
-    await axios.post("http://localhost:4000/schedule", {
-      date: schedule.date,
-      hour: schedule.time,
-      description: schedule.subject,
-      id_user: user.id,
-    });
+    return (
+      await axios.post("http://localhost:4000/schedule", {
+        date: schedule.date,
+        hour: schedule.time,
+        description: schedule.subject,
+        id_user: user.id,
+      })
+    ).data;
   } catch (error) {
     console.log(error);
   }
@@ -198,7 +200,6 @@ const generateReports = async () => {
   }
 };
 
-
 /**
  * Genera un mensaje con los informes.
  * @returns {string} - El mensaje con los informes.
@@ -213,27 +214,78 @@ const messageReports = async () => {
  * @returns {Object[]} - Los recordatorios de pagos pendientes.
  */
 const getReminders = async () => {
-  const respons = await axios.get('http://localhost:4000/getAllPlatments')
-  const playments = respons.data
-  const reminders = []
-  for(const playment of playments){
-    if (playment.status == 'PENDIENTE') {
-      reminders.push(playment)
+  const respons = await axios.get("http://localhost:4000/getAllPlatments");
+  const playments = respons.data;
+  const reminders = [];
+  for (const playment of playments) {
+    let lowerPlay = playment.status.toLowerCase()
+    if (lowerPlay == "pendiente") {
+      reminders.push(playment);
     }
   }
 
-  return reminders
-}
+  return reminders;
+};
 
 /**
  * Busca un usuario por su ID.
  * @param {string} id_user - El ID del usuario.
  * @returns {Object} - Los datos del usuario.
  */
-const searchUserById= async (id_user) => {
-  const response = await axios.get(`http://localhost:4000/userId/${id_user}`)
-  return response.data
-}
+const searchUserById = async (id_user) => {
+  const response = await axios.get(`http://localhost:4000/userId/${id_user}`);
+  return response.data;
+};
+/**
+ * anade un proyecto segun la cita agendada solo prueba
+ * @param {schedule} datos de la cita
+ * @returns {user} - Los datos del usuario.
+ */
+const addProject = async (schedule, user) => {
+  try {
+    const status = [
+      "Planificación",
+      "Diseño",
+      "Implementación",
+      "Pruebas",
+      "Despliegue",
+      "Mantenimiento",
+    ];
+    const randomIndex = Math.floor(Math.random() * status.length);
+    const randomStatus = status[randomIndex];
+
+    const project = (
+      await axios.post(`http://localhost:4000/project`, {
+        name: schedule.description,
+        deliverDate: schedule.date,
+        status: randomStatus,
+        idSchedule: schedule.id,
+      })
+    ).data;
+
+    const status2 = ["Pendiente", "Pagado"];
+    const randomIndex2 = Math.floor(Math.random() * status2.length);
+    const randomStatus2 = status2[randomIndex2];
+
+    const amounr = [
+      500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000,
+    ];
+    const randomIndex3 = Math.floor(Math.random() * amounr.length);
+    const randomStatus3 = amounr[randomIndex3];
+
+    console.log(
+      await axios.post(`http://localhost:4000/payment`, {
+        amount: randomStatus3,
+        dueDate: schedule.date,
+        status: randomStatus2,
+        idUser: user.id,
+        idProject: project.id,
+      })
+    );
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 export {
   searchPhone,
@@ -244,5 +296,8 @@ export {
   projectByPhone,
   generateReports,
   paymentByProyect,
-  messageReports,getReminders, searchUserById
+  messageReports,
+  getReminders,
+  searchUserById,
+  addProject,
 };

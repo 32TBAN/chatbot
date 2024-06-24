@@ -14,6 +14,7 @@ import {
   generateReports,
   paymentByProyect,
   messageReports,
+  addProject,
 } from "./func/services.functions.js"; // * Funciones para el manejo con la base de datos
 
 import {
@@ -61,7 +62,8 @@ class MessageHandler {
       msg.from != "593984635564@c.us" &&
       msg.from != "593984493368@c.us" &&
       msg.from != "593984725398@c.us" &&
-      msg.from != "593995547555@c.us"
+      msg.from != "593995547555@c.us" &&
+      msg.from != "593994054631@c.us"
     ) {
       // * Adicional para pruebas, ignora numeros que no esten en el if
       console.log("Mensaje ignorado de:", msg.from);
@@ -88,8 +90,8 @@ class MessageHandler {
     }
   }
 
-    // * Manejo de registro pendiente
-    // * Dependiendo el paso en el que se encuentre se mostrara un mensaje diferente
+  // * Manejo de registro pendiente
+  // * Dependiendo el paso en el que se encuentre se mostrara un mensaje diferente
   async handlePendingRegistration(msg) {
     const registrationState = this.pendingRegistrations[msg.from];
     if (registrationState.step === 1) {
@@ -98,7 +100,8 @@ class MessageHandler {
       await this.client.sendMessage(msg.from, messages.email);
     } else if (registrationState.step === 2) {
       registrationState.email = msg.body.trim();
-      if (validateEmail(registrationState.email)) { // * valida el email
+      if (validateEmail(registrationState.email)) {
+        // * valida el email
         await registerUser(registrationState);
         delete this.pendingRegistrations[msg.from];
         await this.client.sendMessage(msg.from, messages.register);
@@ -144,14 +147,16 @@ class MessageHandler {
       await this.sendProjectStatus(msg.from);
     } else if (lowerCaseMessage == "!reportes") {
       await this.sendReports(msg.from);
+    } else if (lowerCaseMessage == "!videos") {
+      await this.sendVideos(msg.from);
     } else {
       await this.sendDefaultResponse(msg);
     }
   }
 
-    // * Solicita el registro de un nuevo usuario entrando despues al registro pendiente
+  // * Solicita el registro de un nuevo usuario entrando despues al registro pendiente
   async promptRegistration(to) {
-    if (!this.pendingRegistrations[to]) {
+    if (!this.pendingRegistrations[to] || this.pendingRegistrations[to].step == 0) {
       const logoPath = path.resolve(__dirname, "./assets/img/logo.jpg");
       const logo = MessageMedia.fromFilePath(logoPath);
       await this.client.sendMessage(to, logo, {
@@ -167,6 +172,7 @@ class MessageHandler {
           this.pendingRegistrations[to] = { phone: to, step: 1 };
         } else if (responseMsg.body.toLowerCase() === "no") {
           await this.client.sendMessage(to, messages.noRegister);
+          this.pendingRegistrations[to] = { phone: to, step: 0 };
         }
       }
     };
@@ -274,17 +280,17 @@ class MessageHandler {
       const time = msg.body.trim();
       if (validateTime(time)) {
         scheduleState.time = time;
-        await this.client.sendMessage(msg.from, messages.subjectAppointment);
-        scheduleState.step = 4;
+        if (await existSchedule(scheduleState)) {
+          await this.client.sendMessage(msg.from, messages.existSchedule);
+          scheduleState.step = 1;
+        } else {
+          await this.client.sendMessage(msg.from, messages.subjectAppointment);
+          scheduleState.step = 4;
+        }
       } else {
         await this.client.sendMessage(msg.from, messages.invalidHour);
       }
-      scheduleState.step = 4;
-
-      if (await existSchedule(scheduleState)) {
-        await this.client.sendMessage(msg.from, messages.existSchedule);
-        scheduleState.step = 1;
-      }
+      //scheduleState.step = 4;
     } else if (scheduleState.step === 4) {
       scheduleState.subject = msg.body.trim();
 
@@ -315,7 +321,8 @@ END:VCALENDAR`;
         msg.from,
         `${messages.succesfullAppointment} *${scheduleState.date}* a las *${scheduleState.time}*`
       );
-      await addSchedule(scheduleState, user);
+      const dataSchedule = await addSchedule(scheduleState, user);
+      await addProject(dataSchedule, user);
       delete this.pendingSchedules[msg.from];
     }
   }
@@ -485,8 +492,15 @@ END:VCALENDAR`;
       );
     }
   }
-// * mensaje por defecto si no se reconoce una palabra clave o numero o letra
+  // * mensaje por defecto si no se reconoce una palabra clave o numero o letra
   async sendDefaultResponse(msg) {
+    const stickerPath = path.resolve(__dirname, "./assets/img/sitcke1.jpg");
+    const sticker1 = MessageMedia.fromFilePath(stickerPath);
+
+    await this.client.sendMessage(msg.from, sticker1, {
+      sendMediaAsSticker: true,
+    });
+
     const defaultMessage =
       "Lo siento, no entendí tu mensaje. Por favor elige una opción:\n\n" +
       messages.greeting;
@@ -498,13 +512,24 @@ END:VCALENDAR`;
       .catch((err) => {
         console.error("Error al enviar la respuesta predeterminada:", err);
       });
+  }
 
-    const stickerPath = path.resolve(__dirname, "./assets/img/sitcke1.jpg");
-    const sticker1 = MessageMedia.fromFilePath(stickerPath);
+  async sendVideos(msg) {
+    const videopath1 = path.resolve(__dirname, "./assets/video/v1.mp4");
+    const v1 = MessageMedia.fromFilePath(videopath1);
+    await this.client.sendMessage(msg.from, v1);
 
-    await this.client.sendMessage(msg.from, sticker1, {
-      sendMediaAsSticker: true,
-    });
+    const videopath2 = path.resolve(__dirname, "./assets/video/v2.mp4");
+    const v2 = MessageMedia.fromFilePath(videopath2);
+    await this.client.sendMessage(msg.from, v2);
+
+    const videopath3 = path.resolve(__dirname, "./assets/video/v3.mp4");
+    const v3 = MessageMedia.fromFilePath(videopath3);
+    await this.client.sendMessage(msg.from, v3);
+
+    const videopath4 = path.resolve(__dirname, "./assets/video/v4.mp4");
+    const v4 = MessageMedia.fromFilePath(videopath4);
+    await this.client.sendMessage(msg.from, v4);
   }
 }
 

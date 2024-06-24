@@ -17,7 +17,7 @@ app.use(express.json()) // *  Middleware para parsear JSON en las peticiones HTT
 app.use(userRoutes); // * Rutas para los usuarios
 app.use(scheduleRoutes); // * Rutas para los horarios
 app.use(commentRoutes); // * Rutas para los comentarios
-app.use(paymentsRoutes); // * Rutas para los pagos
+app.use(playmentsRoutes); // * Rutas para los pagos
 app.use(projectsRoutes); // * Rutas para los proyectos
 
 // * Middleware de manejo de errores

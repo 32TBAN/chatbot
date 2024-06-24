@@ -17,4 +17,18 @@ const getProjectByPhone = async (req, res, next) => {
   }
 };
 
-module.exports = { getProjectByPhone };
+const addProject = async (req, res, next) => {
+  const { name, deliverDate, status, idSchedule} = req.body;
+  try {
+    const result = await pool.query(
+      "INSERT INTO PROJECTS (NAME, DELIVER_DATE, STATUS, ID_SCHEDULE) VALUES ($1,$2,$3,$4) RETURNING *",
+      [name, deliverDate, status, idSchedule]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    next(error)
+  }
+}
+
+module.exports = { getProjectByPhone , addProject};

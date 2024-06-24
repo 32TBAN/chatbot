@@ -67,7 +67,8 @@ CREATE TABLE PAYMENTS(
     STATUS VARCHAR(20), -- Pendiente, Pagado
     ID_USER INT REFERENCES USERS(ID),
     CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id_schedule int REFERENCES SCHEDULES(ID)
 );
 
 -- Índices para mejorar el rendimiento en consultas
@@ -82,3 +83,18 @@ VALUES ('KEVIN', '0998680754','estebanguanoluisa2002@gmail.com','FULLSTACK MERN'
 
 INSERT INTO PROGRAMMERS (NAME, PHONE, EMAIL, SKILLS)
 VALUES ('STEVEN', '099999999','steven@gmail.com','REACT, HTML, CSS');
+
+select * from comments
+select * from payments
+select * from project_programmers
+delete from project_programmers
+select * from payments
+delete from payments
+select * from projects
+delete from projects
+select * from schedules
+delete from schedules
+select * from users
+delete from users
+Insert into payments (amount, due_date, status, id_user) 
+	values(500,'2024-07-10','Pendiente',6)
