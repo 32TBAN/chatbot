@@ -213,19 +213,24 @@ const messageReports = async () => {
  * Obtiene los recordatorios de pagos pendientes.
  * @returns {Object[]} - Los recordatorios de pagos pendientes.
  */
-const getReminders = async () => {
-  const respons = await axios.get("http://localhost:4000/getAllPlatments");
-  const playments = respons.data;
-  const reminders = [];
-  for (const playment of playments) {
-    let lowerPlay = playment.status.toLowerCase()
-    if (lowerPlay == "pendiente") {
-      reminders.push(playment);
-    }
-  }
+async function getReminders() {
+  try {
+    const response = await axios.get("http://localhost:3000/api/reminders");
+    const playments = response.data;
 
-  return reminders;
-};
+    
+    if (!Array.isArray(playments)) {
+      console.warn("playments no es un array, inicializando vacío");
+      return [];
+    }
+
+    return playments;
+  } catch (err) {
+    console.error("Error al obtener recordatorios:", err.message);
+    return [];
+  }
+}
+
 
 /**
  * Busca un usuario por su ID.

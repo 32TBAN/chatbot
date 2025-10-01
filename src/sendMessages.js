@@ -57,18 +57,13 @@ class MessageHandler {
   async handleMessage(msg) {
     console.log("De: ", msg.from);
 
-    if (
-      msg.from != "593979353728@c.us" &&
-      msg.from != "593984635564@c.us" &&
-      msg.from != "593984493368@c.us" &&
-      msg.from != "593984725398@c.us" &&
-      msg.from != "593995547555@c.us" &&
-      msg.from != "593994054631@c.us"
-    ) {
-      // * Adicional para pruebas, ignora numeros que no esten en el if
-      console.log("Mensaje ignorado de:", msg.from);
-      return;
-    }
+    // if (
+
+    // ) {
+    //   // * Adicional para pruebas, ignora numeros que no esten en el if
+    //   console.log("Mensaje ignorado de:", msg.from);
+    //   return;
+    // }
 
     console.log("Mensaje: ", msg.body);
 

@@ -6,17 +6,12 @@ import AutomatedMessageHandler from "./automaticMessange.js"; // * Manejador per
 const { Client, LocalAuth } = pkg; // * Extraemos las clases necesarias del paquete whatsapp-web.js clients es para cliente de whatsspa y localAut para guardar las credenciales 
 
 const client = new Client({
+  authStrategy: new LocalAuth({ dataPath: "sessions" }),
   puppeteer: {
-    // * esto solo es necesario solo si se quiere obtener medias con URL
-    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-},
-  authStrategy: new LocalAuth({
-    dataPath: "sessions", // * Aqui se almacenaran datos de session
-  }),
-  webVersionCache: {
-    type: "remote",
-    remotePath: 'https://raw.githubusercontent.com/guigo613/alternative-wa-version/main/html/2.2412.54v2.html',
+    headless: true, 
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   },
+  restartOnAuthFail: true,
 });
 
 client.on("ready", () => {
