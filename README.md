@@ -31,3 +31,6 @@ Se puede conectar a una **base de datos** y personalizar los mensajes desde la c
 ```bash
 git clone https://github.com/tu_usuario/chatbot-whatsapp.git
 cd chatbot-whatsapp
+```
+---
+![Database](BACKEND/database/chatbot.png)
