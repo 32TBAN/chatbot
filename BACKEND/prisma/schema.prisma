@@ -1,0 +1,319 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  owner
+  admin
+  agent
+}
+
+enum BusinessStatus {
+  active
+  inactive
+  suspended
+}
+
+enum WhatsappSessionStatus {
+  pending
+  connected
+  disconnected
+  expired
+}
+
+enum AppointmentStatus {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+enum MessageType {
+  text
+  image
+  document
+  audio
+  video
+  location
+  interactive
+}
+
+enum FlowNodeType {
+  welcome
+  menu
+  text_response
+  products
+  appointments
+  support
+  registration
+  fallback
+}
+
+enum CustomerStatus {
+  lead
+  active
+  blocked
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  cancelled
+  expired
+}
+
+model Business {
+  id               String            @id @default(uuid()) @db.Uuid
+  name             String            @db.VarChar(120)
+  slug             String            @unique @db.VarChar(120)
+  description      String?
+  phone            String?           @db.VarChar(20)
+  email            String?           @db.VarChar(120)
+  address          String?
+  industry         String?           @db.VarChar(80)
+  timezone         String            @default("America/Guayaquil") @db.VarChar(50)
+  status           BusinessStatus    @default(active)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  users            User[]
+  businessSettings BusinessSettings?
+  whatsappSession  WhatsappSession?
+  customers        Customer[]
+  products         Product[]
+  appointments     Appointment[]
+  messages         Message[]
+  flows            Flow[]
+  payments         Payment[]
+
+  @@map("businesses")
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  businessId    String         @map("business_id") @db.Uuid
+  name          String         @db.VarChar(100)
+  phone         String?        @db.VarChar(20)
+  email         String         @unique @db.VarChar(120)
+  passwordHash  String         @map("password_hash") @db.VarChar(255)
+  role          UserRole       @default(agent)
+  isActive      Boolean        @default(true) @map("is_active")
+  lastLoginAt   DateTime?      @map("last_login_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointments  Appointment[]
+  customerNotes CustomerNote[]
+
+  @@index([businessId], map: "idx_users_business_id")
+  @@map("users")
+}
+
+model BusinessSettings {
+  id                  String   @id @default(uuid()) @db.Uuid
+  businessId          String   @unique @map("business_id") @db.Uuid
+  welcomeMessage      String?  @map("welcome_message")
+  fallbackMessage     String?  @map("fallback_message")
+  supportMessage      String?  @map("support_message")
+  askForName          Boolean  @default(true) @map("ask_for_name")
+  askForEmail         Boolean  @default(false) @map("ask_for_email")
+  askForRegistration  Boolean  @default(false) @map("ask_for_registration")
+  appointmentsEnabled Boolean  @default(true) @map("appointments_enabled")
+  productsEnabled     Boolean  @default(true) @map("products_enabled")
+  supportEnabled      Boolean  @default(true) @map("support_enabled")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  business            Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("business_settings")
+}
+
+model WhatsappSession {
+  id          String                @id @default(uuid()) @db.Uuid
+  businessId  String                @unique @map("business_id") @db.Uuid
+  sessionKey  String                @unique @map("session_key") @db.VarChar(255)
+  phoneNumber String?               @map("phone_number") @db.VarChar(20)
+  qrCode      String?               @map("qr_code")
+  status      WhatsappSessionStatus @default(pending)
+  connectedAt DateTime?             @map("connected_at")
+  lastSeenAt  DateTime?             @map("last_seen_at")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  business    Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  messages    Message[]
+
+  @@index([businessId], map: "idx_whatsapp_sessions_business_id")
+  @@map("whatsapp_sessions")
+}
+
+model Customer {
+  id            String         @id @default(uuid()) @db.Uuid
+  businessId    String         @map("business_id") @db.Uuid
+  name          String?        @db.VarChar(100)
+  phone         String         @db.VarChar(20)
+  email         String?        @db.VarChar(120)
+  status        CustomerStatus @default(lead)
+  source        String?        @default("whatsapp") @db.VarChar(50)
+  notes         String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointments  Appointment[]
+  messages      Message[]
+  customerNotes CustomerNote[]
+  payments      Payment[]
+
+  @@unique([businessId, phone], map: "uq_customer_phone_per_business")
+  @@unique([businessId, email], map: "uq_customer_email_per_business")
+  @@index([businessId], map: "idx_customers_business_id")
+  @@index([phone], map: "idx_customers_phone")
+  @@map("customers")
+}
+
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  businessId  String   @map("business_id") @db.Uuid
+  name        String   @db.VarChar(120)
+  description String?
+  price       Decimal? @db.Decimal(10, 2)
+  currency    String?  @default("USD") @db.VarChar(10)
+  stock       Int?     @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId], map: "idx_products_business_id")
+  @@map("products")
+}
+
+model Appointment {
+  id              String            @id @default(uuid()) @db.Uuid
+  businessId      String            @map("business_id") @db.Uuid
+  customerId      String            @map("customer_id") @db.Uuid
+  assignedUserId  String?           @map("assigned_user_id") @db.Uuid
+  appointmentDate DateTime          @map("appointment_date") @db.Date
+  appointmentTime DateTime          @map("appointment_time") @db.Time(6)
+  durationMinutes Int?              @default(30) @map("duration_minutes")
+  description     String?
+  status          AppointmentStatus @default(pending)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer        Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assignedUser    User?             @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  payments        Payment[]
+
+  @@index([businessId, appointmentDate], map: "idx_appointments_business_date")
+  @@map("appointments")
+}
+
+model Message {
+  id                String            @id @default(uuid()) @db.Uuid
+  businessId        String            @map("business_id") @db.Uuid
+  customerId        String?           @map("customer_id") @db.Uuid
+  whatsappSessionId String?           @map("whatsapp_session_id") @db.Uuid
+  direction         MessageDirection
+  messageType       MessageType       @default(text) @map("message_type")
+  content           String?
+  mediaUrl          String?           @map("media_url")
+  externalMessageId String?           @map("external_message_id") @db.VarChar(255)
+  sentAt            DateTime?         @map("sent_at")
+  deliveredAt       DateTime?         @map("delivered_at")
+  readAt            DateTime?         @map("read_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  business          Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer          Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  whatsappSession   WhatsappSession?  @relation(fields: [whatsappSessionId], references: [id], onDelete: SetNull)
+
+  @@index([businessId], map: "idx_messages_business_id")
+  @@index([customerId], map: "idx_messages_customer_id")
+  @@map("messages")
+}
+
+model Flow {
+  id             String     @id @default(uuid()) @db.Uuid
+  businessId     String     @map("business_id") @db.Uuid
+  name           String     @db.VarChar(120)
+  triggerKeyword String?    @map("trigger_keyword") @db.VarChar(100)
+  isActive       Boolean    @default(true) @map("is_active")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  business       Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  flowNodes      FlowNode[]
+
+  @@index([businessId], map: "idx_flow_business_id")
+  @@map("flows")
+}
+
+model FlowNode {
+  id              String       @id @default(uuid()) @db.Uuid
+  flowId          String       @map("flow_id") @db.Uuid
+  nodeType        FlowNodeType @map("node_type")
+  title           String       @db.VarChar(120)
+  content         String?
+  sortOrder       Int          @default(0) @map("sort_order")
+  isActive        Boolean      @default(true) @map("is_active")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  flow            Flow         @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  options         FlowOption[] @relation("FlowNodeOptions")
+  nextFromOptions FlowOption[] @relation("NextFlowNode")
+
+  @@map("flow_nodes")
+}
+
+model FlowOption {
+  id          String    @id @default(uuid()) @db.Uuid
+  flowNodeId  String    @map("flow_node_id") @db.Uuid
+  optionLabel String    @map("option_label") @db.VarChar(120)
+  optionValue String    @map("option_value") @db.VarChar(120)
+  nextNodeId  String?   @map("next_node_id") @db.Uuid
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  flowNode    FlowNode  @relation("FlowNodeOptions", fields: [flowNodeId], references: [id], onDelete: Cascade)
+  nextNode    FlowNode? @relation("NextFlowNode", fields: [nextNodeId], references: [id], onDelete: SetNull)
+
+  @@map("flow_options")
+}
+
+model CustomerNote {
+  id         String   @id @default(uuid()) @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_notes")
+}
+
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  businessId    String        @map("business_id") @db.Uuid
+  customerId    String?       @map("customer_id") @db.Uuid
+  appointmentId String?       @map("appointment_id") @db.Uuid
+  amount        Decimal       @db.Decimal(10, 2)
+  dueDate       DateTime?     @map("due_date") @db.Date
+  status        PaymentStatus @default(pending)
+  description   String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  appointment   Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([businessId], map: "idx_payments_business_id")
+  @@map("payments")
+}
