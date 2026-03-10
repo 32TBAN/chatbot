@@ -10,7 +10,10 @@ import {
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import {
+  AuthenticatedUser,
+  requireBusinessId,
+} from '../../auth/types/authenticated-user.type';
 import { PrismaService } from '../../prisma/prisma.service';
 
 class UpdateBusinessSettingsDto {
@@ -65,10 +68,12 @@ class BusinessSettingsService {
       throw new ForbiddenException('Insufficient permissions');
     }
 
+    const businessId = requireBusinessId(user);
+
     return this.prisma.businessSettings.upsert({
-      where: { businessId: user.businessId },
+      where: { businessId },
       create: {
-        businessId: user.businessId,
+        businessId,
         ...dto,
       },
       update: dto,
@@ -83,7 +88,7 @@ class BusinessSettingsController {
 
   @Get()
   get(@CurrentUser() user: AuthenticatedUser) {
-    return this.businessSettingsService.get(user.businessId);
+    return this.businessSettingsService.get(requireBusinessId(user));
   }
 
   @Patch()

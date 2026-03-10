@@ -1,7 +1,6 @@
 import { Phone, ShieldCheck, Workflow } from "lucide-react";
 import { AuthHeader } from "@/components/auth/auth-header";
 import { LoginForm } from "@/components/auth/login-form";
-import { RecoverForm } from "@/components/auth/recover-form";
 import { RegisterForm } from "@/components/auth/register-form";
 import { StatusAlert } from "@/components/auth/status-alert";
 import { useAuth } from "@/contexts/auth-context";
@@ -19,7 +18,6 @@ export function AuthShell() {
     setLoginValues,
     setRegisterValues,
     submitLogin,
-    submitRecover,
     submitRegister,
     switchMode,
   } = useAuth();
@@ -48,8 +46,8 @@ export function AuthShell() {
               Controla flujos, citas y conexion desde una sola mesa.
             </h1>
             <p className="mt-5 max-w-lg text-sm leading-7 text-panel-ivory/72 sm:text-base">
-              Entra con tu cuenta o crea una nueva para preparar automatizaciones, operar reservas y
-              mantener la atencion del negocio bajo una sesion segura.
+              Entra con la cuenta operativa del negocio para preparar automatizaciones, operar reservas y
+              mantener la atencion bajo una sesion conectada al backend real.
             </p>
           </div>
 
@@ -87,83 +85,58 @@ export function AuthShell() {
 
         <section className="bg-card px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
           <div className="mx-auto flex max-w-xl flex-col">
-            <div className="rounded-lg border border-border bg-background p-1">
-              <div className="grid grid-cols-2 gap-1">
-                <button
-                  className={cn(
-                    "rounded-md px-4 py-3 text-sm font-medium transition-colors",
-                    authMode === "login" || authMode === "recover"
-                      ? "bg-panel-ink text-panel-ivory"
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                  onClick={() => switchMode("login")}
-                  type="button"
-                >
-                  Entrar
-                </button>
-                <button
-                  className={cn(
-                    "rounded-md px-4 py-3 text-sm font-medium transition-colors",
-                    authMode === "register"
-                      ? "bg-panel-ink text-panel-ivory"
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                  onClick={() => switchMode("register")}
-                  type="button"
-                >
-                  Crear cuenta
-                </button>
-              </div>
+            <div className="mt-8">
+              <AuthHeader
+                title={authMode === "login" ? "Iniciar sesion" : "Crear cuenta"}
+                description={
+                  authMode === "login"
+                    ? "Accede al panel operativo con tu correo principal y credenciales del backend."
+                    : "Crea tu cuenta con nombre, correo, telefono opcional y una contrasena segura."
+                }
+              />
             </div>
 
-            <div className="mt-8">
-              {authMode === "login" ? (
-                <AuthHeader title="Iniciar sesion" description="Accede al panel operativo con tu correo principal." />
-              ) : null}
-              {authMode === "register" ? (
-                <AuthHeader title="Crear cuenta" description="Registra el negocio y entra directo al panel al terminar." />
-              ) : null}
-              {authMode === "recover" ? (
-                <AuthHeader title="Recuperar acceso" description="Inicia el flujo para restaurar el acceso al correo registrado." />
-              ) : null}
+            <div className="mt-6 grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1">
+              {[
+                { key: "login", label: "Login" },
+                { key: "register", label: "Registro" },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  className={cn(
+                    "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                    authMode === item.key
+                      ? "bg-panel-ink text-panel-ivory"
+                      : "text-muted-foreground hover:text-panel-ink",
+                  )}
+                  onClick={() => switchMode(item.key as "login" | "register")}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
 
             {authStatus ? <StatusAlert className="mt-6" message={authStatus.message} tone={authStatus.tone} /> : null}
 
             {authMode === "login" ? (
-              <LoginForm
-                authBusy={authBusy}
-                errors={loginErrors}
-                onChange={setLoginValues}
-                onRecover={() => switchMode("recover")}
-                onSubmit={submitLogin}
-                values={loginValues}
-              />
-            ) : null}
-
-            {authMode === "register" ? (
+              <LoginForm authBusy={authBusy} errors={loginErrors} onChange={setLoginValues} onSubmit={submitLogin} values={loginValues} />
+            ) : (
               <RegisterForm
                 authBusy={authBusy}
                 errors={registerErrors}
                 onChange={setRegisterValues}
-                onRecoverExisting={() => {
-                  setLoginValues((current) => ({ ...current, email: registerValues.email }));
-                  switchMode("recover");
-                }}
+                onRecoverExisting={() => switchMode("login")}
                 onSubmit={submitRegister}
                 values={registerValues}
               />
-            ) : null}
+            )}
 
-            {authMode === "recover" ? (
-              <RecoverForm
-                authBusy={authBusy}
-                onBack={() => switchMode("login")}
-                onChange={setLoginValues}
-                onSubmit={submitRecover}
-                values={loginValues}
-              />
-            ) : null}
+            <p className="mt-6 text-sm leading-6 text-muted-foreground">
+              {authMode === "login"
+                ? "Si aun no tienes cuenta, usa la pestana de registro para crearla."
+                : "Despues de crear tu cuenta podras completar la informacion del negocio."}
+            </p>
           </div>
         </section>
       </div>

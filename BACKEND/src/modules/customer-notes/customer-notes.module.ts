@@ -13,7 +13,10 @@ import {
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import {
+  AuthenticatedUser,
+  requireBusinessId,
+} from '../../auth/types/authenticated-user.type';
 import { PrismaService } from '../../prisma/prisma.service';
 
 class CreateCustomerNoteDto {
@@ -34,16 +37,19 @@ class CustomerNotesService {
   constructor(private readonly prisma: PrismaService) {}
 
   list(user: AuthenticatedUser) {
+    const businessId = requireBusinessId(user);
+
     return this.prisma.customerNote.findMany({
-      where: { customer: { businessId: user.businessId } },
+      where: { customer: { businessId } },
       include: { customer: true, user: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async get(user: AuthenticatedUser, id: string) {
+    const businessId = requireBusinessId(user);
     const note = await this.prisma.customerNote.findFirst({
-      where: { id, customer: { businessId: user.businessId } },
+      where: { id, customer: { businessId } },
       include: { customer: true, user: true },
     });
 
@@ -55,8 +61,10 @@ class CustomerNotesService {
   }
 
   async create(user: AuthenticatedUser, dto: CreateCustomerNoteDto) {
+    const businessId = requireBusinessId(user);
+
     await this.prisma.customer.findFirstOrThrow({
-      where: { id: dto.customerId, businessId: user.businessId },
+      where: { id: dto.customerId, businessId },
     });
 
     return this.prisma.customerNote.create({

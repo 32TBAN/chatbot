@@ -100,7 +100,7 @@ model Business {
 
 model User {
   id            String         @id @default(uuid()) @db.Uuid
-  businessId    String         @map("business_id") @db.Uuid
+  businessId    String?        @map("business_id") @db.Uuid
   name          String         @db.VarChar(100)
   phone         String?        @db.VarChar(20)
   email         String         @unique @db.VarChar(120)
@@ -110,7 +110,7 @@ model User {
   lastLoginAt   DateTime?      @map("last_login_at")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
-  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business      Business?      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   appointments  Appointment[]
   customerNotes CustomerNote[]
 

@@ -33,7 +33,7 @@ export function Field({
 
 function helperText(label: string, value: string) {
   if (!value.trim()) {
-    if (label === "Name" || label === "Phone") return "Campo opcional.";
+    if (label === "Telefono") return "Campo opcional.";
     return "Campo obligatorio.";
   }
 

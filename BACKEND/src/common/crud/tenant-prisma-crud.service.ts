@@ -15,6 +15,14 @@ type TenantConfig = {
 export class TenantPrismaCrudService {
   constructor(protected readonly prisma: PrismaService) {}
 
+  protected requireBusinessId(businessId: string | null): string {
+    if (!businessId) {
+      throw new ForbiddenException('Business setup required');
+    }
+
+    return businessId;
+  }
+
   protected delegate(model: string): any {
     return (this.prisma as any)[model];
   }
@@ -30,19 +38,23 @@ export class TenantPrismaCrudService {
     };
   }
 
-  protected async findAll(config: TenantConfig, businessId: string) {
+  protected async findAll(config: TenantConfig, businessId: string | null) {
+    const scopedBusinessId = this.requireBusinessId(businessId);
+
     return this.delegate(config.model).findMany({
       where: config.tenantField
-        ? this.applyTenantScope({}, businessId, config.tenantField)
+        ? this.applyTenantScope({}, scopedBusinessId, config.tenantField)
         : undefined,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  protected async findOne(config: TenantConfig, id: string, businessId: string) {
+  protected async findOne(config: TenantConfig, id: string, businessId: string | null) {
+    const scopedBusinessId = this.requireBusinessId(businessId);
+
     const record = await this.delegate(config.model).findFirst({
       where: config.tenantField
-        ? this.applyTenantScope({ id }, businessId, config.tenantField)
+        ? this.applyTenantScope({ id }, scopedBusinessId, config.tenantField)
         : { id },
     });
 
@@ -55,12 +67,14 @@ export class TenantPrismaCrudService {
 
   protected async create(
     config: TenantConfig,
-    businessId: string,
+    businessId: string | null,
     data: Record<string, unknown>,
   ) {
+    const scopedBusinessId = this.requireBusinessId(businessId);
+
     try {
       return await this.delegate(config.model).create({
-        data: config.tenantField ? { ...data, [config.tenantField]: businessId } : data,
+        data: config.tenantField ? { ...data, [config.tenantField]: scopedBusinessId } : data,
       });
     } catch (error) {
       this.handlePrismaError(error);
@@ -70,10 +84,11 @@ export class TenantPrismaCrudService {
   protected async update(
     config: TenantConfig,
     id: string,
-    businessId: string,
+    businessId: string | null,
     data: Record<string, unknown>,
   ) {
-    const existing = await this.findOne(config, id, businessId);
+    const scopedBusinessId = this.requireBusinessId(businessId);
+    const existing = await this.findOne(config, id, scopedBusinessId);
     const tenantData = config.tenantField
       ? { ...data, [config.tenantField]: (existing as Record<string, unknown>)[config.tenantField] }
       : data;
@@ -88,8 +103,9 @@ export class TenantPrismaCrudService {
     }
   }
 
-  protected async remove(config: TenantConfig, id: string, businessId: string) {
-    await this.findOne(config, id, businessId);
+  protected async remove(config: TenantConfig, id: string, businessId: string | null) {
+    const scopedBusinessId = this.requireBusinessId(businessId);
+    await this.findOne(config, id, scopedBusinessId);
     return this.delegate(config.model).delete({ where: { id } });
   }
 

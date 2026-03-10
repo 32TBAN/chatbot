@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Get,
   Module,
@@ -14,7 +15,10 @@ import * as bcrypt from 'bcrypt';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import {
+  AuthenticatedUser,
+  requireBusinessId,
+} from '../../auth/types/authenticated-user.type';
 import { PrismaService } from '../../prisma/prisma.service';
 
 class OnboardBusinessDto {
@@ -97,6 +101,38 @@ class UpdateBusinessDto {
   timezone?: string;
 }
 
+class CreateBusinessDto {
+  @IsString()
+  name!: string;
+
+  @IsString()
+  slug!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  industry?: string;
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+}
+
 class BusinessesService {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -133,6 +169,48 @@ class BusinessesService {
     });
   }
 
+  async createForUser(user: AuthenticatedUser, dto: CreateBusinessDto) {
+    if (user.businessId) {
+      throw new ConflictException('User already has a business');
+    }
+
+    const business = await this.prisma.$transaction(async (tx) => {
+      const createdBusiness = await tx.business.create({
+        data: {
+          name: dto.name,
+          slug: dto.slug,
+          description: dto.description,
+          phone: dto.phone,
+          email: dto.email,
+          address: dto.address,
+          industry: dto.industry,
+          timezone: dto.timezone,
+          businessSettings: { create: {} },
+        },
+      });
+
+      await tx.user.update({
+        where: { id: user.userId },
+        data: {
+          businessId: createdBusiness.id,
+          role: 'owner',
+        },
+      });
+
+      return createdBusiness;
+    });
+
+    return this.prisma.business.findUnique({
+      where: { id: business.id },
+      include: {
+        users: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+        businessSettings: true,
+      },
+    });
+  }
+
   me(businessId: string) {
     return this.prisma.business.findUnique({
       where: { id: businessId },
@@ -159,9 +237,14 @@ class BusinessesController {
     return this.businessesService.onboard(dto);
   }
 
+  @Post()
+  create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateBusinessDto) {
+    return this.businessesService.createForUser(user, dto);
+  }
+
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
-    return this.businessesService.me(user.businessId);
+    return this.businessesService.me(requireBusinessId(user));
   }
 
   @Patch(':id')
@@ -170,7 +253,9 @@ class BusinessesController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateBusinessDto,
   ) {
-    if (id !== user.businessId || !['owner', 'admin'].includes(user.role)) {
+    const businessId = requireBusinessId(user);
+
+    if (id !== businessId || !['owner', 'admin'].includes(user.role)) {
       throw new ForbiddenException('Insufficient permissions');
     }
 

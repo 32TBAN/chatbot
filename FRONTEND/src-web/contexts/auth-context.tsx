@@ -6,11 +6,10 @@ import {
   type SetStateAction,
   useContext,
   useEffect,
-  useMemo,
   useState,
 } from "react";
-import { getSessionUser, login, logout, register, requestPasswordReset } from "@/services/auth-service";
-import { validateEmail, validateLogin, validateRegister } from "@/lib/validation/auth";
+import { getSessionUser, login, logout, register } from "@/services/auth-service";
+import { validateLogin, validateRegister } from "@/lib/validation/auth";
 import type { AuthMode, AuthStatus, AuthUser, LoginValues, RegisterValues } from "@/types/auth";
 
 type AuthContextValue = {
@@ -21,14 +20,13 @@ type AuthContextValue = {
   isSessionReady: boolean;
   loginErrors: Partial<Record<keyof LoginValues, string>>;
   loginValues: LoginValues;
-  logoutBusy: boolean;
   registerErrors: Partial<Record<keyof RegisterValues, string>>;
   registerValues: RegisterValues;
+  logoutBusy: boolean;
   sessionUser: AuthUser | null;
   setLoginValues: Dispatch<SetStateAction<LoginValues>>;
   setRegisterValues: Dispatch<SetStateAction<RegisterValues>>;
   submitLogin: (event: FormEvent<HTMLFormElement>) => Promise<void>;
-  submitRecover: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   submitRegister: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   switchMode: (mode: AuthMode) => void;
   performLogout: () => Promise<void>;
@@ -58,9 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [loginValues, setLoginValues] = useState<LoginValues>(initialLogin);
   const [registerValues, setRegisterValues] = useState<RegisterValues>(initialRegister);
-
-  const loginErrors = useMemo(() => validateLogin(loginValues), [loginValues]);
-  const registerErrors = useMemo(() => validateRegister(registerValues), [registerValues]);
+  const loginErrors = validateLogin(loginValues);
+  const registerErrors = validateRegister(registerValues);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,50 +104,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const submitRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (Object.values(registerErrors).some(Boolean)) {
-      setAuthStatus({ tone: "error", message: "Corrige los datos del registro antes de continuar." });
+      setAuthStatus({ tone: "error", message: "Revisa los datos del registro antes de continuar." });
       return;
     }
 
     setAuthBusy(true);
     setAuthStatus(null);
-    const result = await register({
-      name: registerValues.name,
-      phone: registerValues.phone,
-      email: registerValues.email,
-      password: registerValues.password,
-    });
+    const result = await register(registerValues);
     setAuthBusy(false);
 
     if (!result.ok) {
-      setAuthStatus({
-        tone: result.code === "email_exists" ? "warning" : "error",
-        message: result.message,
-      });
-      if (result.code === "email_exists") {
-        setLoginValues((current) => ({ ...current, email: registerValues.email }));
-      }
+      setAuthStatus({ tone: "error", message: result.message });
       return;
     }
 
-    setSessionUser(result.user);
-  };
-
-  const submitRecover = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const emailError = validateEmail(loginValues.email);
-    if (emailError) {
-      setAuthStatus({ tone: "error", message: emailError });
+    if (result.user) {
+      setSessionUser(result.user);
       return;
     }
 
-    setAuthBusy(true);
-    setAuthStatus(null);
-    const result = await requestPasswordReset({ email: loginValues.email });
-    setAuthBusy(false);
-    setAuthStatus({
-      tone: result.ok ? "success" : result.code === "not_found" ? "warning" : "error",
-      message: result.message,
-    });
+    setLoginValues((current) => ({ ...current, email: result.email, password: "" }));
+    setRegisterValues((current) => ({ ...current, password: "", confirmPassword: "" }));
+    setAuthMode("login");
+    setAuthStatus({ tone: "success", message: "Cuenta creada. Inicia sesion para continuar." });
   };
 
   const performLogout = async () => {
@@ -172,15 +148,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSessionReady,
         loginErrors,
         loginValues,
-        logoutBusy,
-        performLogout,
         registerErrors,
         registerValues,
+        logoutBusy,
+        performLogout,
         sessionUser,
         setLoginValues,
         setRegisterValues,
         submitLogin,
-        submitRecover,
         submitRegister,
         switchMode,
       }}

@@ -1,40 +1,42 @@
-import type { AuthResult, AuthUser } from "@/types/auth";
-
-type StoredUser = AuthUser & {
-  password: string;
-};
+import { apiRequest } from "@/lib/api";
+import type { AuthResult, AuthUser, RegisterResult } from "@/types/auth";
 
 type StoredSession = {
   token: string;
-  userId: string;
+};
+
+type BackendUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  businessId?: string | null;
+  role?: string | null;
+};
+
+type LoginResponse = {
+  accessToken?: string;
+  user?: BackendUser;
+};
+
+type ErrorResponse = {
+  message?: string | string[];
+  error?: string;
+  statusCode?: number;
 };
 
 type AuthFailureCode =
   | "invalid_credentials"
-  | "email_exists"
   | "network_error"
   | "server_error"
-  | "not_found";
+  | "config_error";
 
-type ResetResult =
-  | { ok: true; message: string }
-  | { ok: false; code: AuthFailureCode; message: string };
+type RegisterFailureCode =
+  | "duplicate_email"
+  | "network_error"
+  | "server_error"
+  | "config_error";
 
-const USERS_KEY = "whatsflow.auth.users";
 const SESSION_KEY = "whatsflow.auth.session";
-
-function readUsers(): StoredUser[] {
-  try {
-    const raw = localStorage.getItem(USERS_KEY);
-    return raw ? (JSON.parse(raw) as StoredUser[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeUsers(users: StoredUser[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
 
 function readSession(): StoredSession | null {
   try {
@@ -54,158 +56,240 @@ function writeSession(session: StoredSession | null) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
-function sanitizeUser(user: StoredUser): AuthUser {
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    phone: user.phone,
-  };
-}
-
-function simulateLatency() {
-  return new Promise((resolve) => setTimeout(resolve, 450));
-}
-
-function maybeFailNetwork() {
-  const shouldFail = false;
-  if (shouldFail) {
-    throw new Error("network_error");
-  }
-}
-
-export async function getSessionUser(): Promise<AuthUser | null> {
-  await simulateLatency();
-  const session = readSession();
-  if (!session) return null;
-
-  const user = readUsers().find((item) => item.id === session.userId);
-  if (!user) {
-    writeSession(null);
+function mapUser(user: BackendUser | null | undefined): AuthUser | null {
+  if (!user?.id || !user.email) {
     return null;
   }
 
-  return sanitizeUser(user);
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name ?? undefined,
+    businessId: user.businessId ?? undefined,
+    role: user.role ?? undefined,
+  };
+}
+
+async function parseJson<T>(response: Response): Promise<T | null> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return null;
+  }
+
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function mapFailure(code: AuthFailureCode): AuthResult {
+  switch (code) {
+    case "config_error":
+      return {
+        ok: false,
+        code,
+        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+      };
+    case "invalid_credentials":
+      return {
+        ok: false,
+        code,
+        message: "El email o la contrasena no coinciden.",
+      };
+    case "network_error":
+      return {
+        ok: false,
+        code,
+        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+      };
+    default:
+      return {
+        ok: false,
+        code: "server_error",
+        message: "Hubo un problema al iniciar sesion. Intenta de nuevo.",
+      };
+  }
+}
+
+function mapRegisterFailure(code: RegisterFailureCode): RegisterResult {
+  switch (code) {
+    case "config_error":
+      return {
+        ok: false,
+        code,
+        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+      };
+    case "duplicate_email":
+      return {
+        ok: false,
+        code,
+        message: "Ese correo ya esta registrado.",
+      };
+    case "network_error":
+      return {
+        ok: false,
+        code,
+        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+      };
+    default:
+      return {
+        ok: false,
+        code: "server_error",
+        message: "Hubo un problema al crear la cuenta. Intenta de nuevo.",
+      };
+  }
+}
+
+function isDuplicateEmail(response: Response, data: ErrorResponse | null) {
+  if (response.status === 409) {
+    return true;
+  }
+
+  const message = Array.isArray(data?.message) ? data.message.join(" ") : data?.message ?? "";
+  return /exists|duplicate|already|registrado|uso/i.test(message);
+}
+
+export async function getSessionUser(): Promise<AuthUser | null> {
+  const session = readSession();
+  if (!session?.token) {
+    return null;
+  }
+
+  try {
+    const response = await apiRequest("/auth/me", {
+      headers: {
+        Authorization: `Bearer ${session.token}`,
+      },
+    });
+
+    if (!response.ok) {
+      writeSession(null);
+      return null;
+    }
+
+    const user = mapUser(await parseJson<BackendUser>(response));
+
+    if (!user) {
+      writeSession(null);
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    if (error instanceof Error && error.message === "api_url_missing") {
+      writeSession(null);
+      return null;
+    }
+
+    if (error instanceof Error && error.message === "network_error") {
+      return null;
+    }
+
+    writeSession(null);
+    return null;
+  }
 }
 
 export async function login(input: {
   email: string;
   password: string;
 }): Promise<AuthResult> {
-  await simulateLatency();
-
   try {
-    maybeFailNetwork();
-    const users = readUsers();
-    const user = users.find((item) => item.email.toLowerCase() === input.email.toLowerCase());
-
-    if (!user || user.password !== input.password) {
-      return {
-        ok: false,
-        code: "invalid_credentials",
-        message: "El email o la contrasena no coinciden.",
-      };
-    }
-
-    writeSession({
-      token: `wf_${user.id}_${Date.now()}`,
-      userId: user.id,
+    const response = await apiRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: input.email.trim(),
+        password: input.password,
+      }),
     });
 
-    return { ok: true, user: sanitizeUser(user) };
+    if (response.status === 401) {
+      return mapFailure("invalid_credentials");
+    }
+
+    if (!response.ok) {
+      return mapFailure("server_error");
+    }
+
+    const data = await parseJson<LoginResponse>(response);
+    const token = data?.accessToken;
+    const user = mapUser(data?.user);
+
+    if (!token || !user) {
+      writeSession(null);
+      return mapFailure("server_error");
+    }
+
+    writeSession({ token });
+    return { ok: true, user };
   } catch (error) {
-    return {
-      ok: false,
-      code: error instanceof Error && error.message === "network_error" ? "network_error" : "server_error",
-      message:
-        error instanceof Error && error.message === "network_error"
-          ? "No se pudo conectar con el servicio. Intenta de nuevo."
-          : "Hubo un problema al iniciar sesion. Intenta de nuevo.",
-    };
+    writeSession(null);
+
+    if (error instanceof Error && error.message === "api_url_missing") {
+      return mapFailure("config_error");
+    }
+
+    if (error instanceof Error && error.message === "network_error") {
+      return mapFailure("network_error");
+    }
+
+    return mapFailure("server_error");
   }
 }
 
 export async function register(input: {
-  name?: string;
+  name: string;
   phone?: string;
   email: string;
   password: string;
-}): Promise<AuthResult> {
-  await simulateLatency();
-
+}): Promise<RegisterResult> {
   try {
-    maybeFailNetwork();
-    const users = readUsers();
-    const existing = users.find((item) => item.email.toLowerCase() === input.email.toLowerCase());
-
-    if (existing) {
-      return {
-        ok: false,
-        code: "email_exists",
-        message: "Ese correo ya tiene una cuenta. Puedes recuperar el acceso.",
-      };
-    }
-
-    const user: StoredUser = {
-      id: crypto.randomUUID(),
-      email: input.email.trim().toLowerCase(),
-      password: input.password,
-      name: input.name?.trim() || undefined,
-      phone: input.phone?.trim() || undefined,
-    };
-
-    users.push(user);
-    writeUsers(users);
-    writeSession({
-      token: `wf_${user.id}_${Date.now()}`,
-      userId: user.id,
+    const response = await apiRequest("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        name: input.name.trim(),
+        phone: input.phone?.trim() || undefined,
+        email: input.email.trim(),
+        password: input.password,
+      }),
     });
 
-    return { ok: true, user: sanitizeUser(user) };
-  } catch (error) {
-    return {
-      ok: false,
-      code: error instanceof Error && error.message === "network_error" ? "network_error" : "server_error",
-      message:
-        error instanceof Error && error.message === "network_error"
-          ? "No se pudo conectar con el servicio. Intenta de nuevo."
-          : "No se pudo completar el registro. Intenta de nuevo.",
-    };
-  }
-}
+    if (!response.ok) {
+      const errorData = await parseJson<ErrorResponse>(response);
+      if (isDuplicateEmail(response, errorData)) {
+        return mapRegisterFailure("duplicate_email");
+      }
 
-export async function requestPasswordReset(input: { email: string }): Promise<ResetResult> {
-  await simulateLatency();
-
-  try {
-    maybeFailNetwork();
-    const user = readUsers().find((item) => item.email.toLowerCase() === input.email.toLowerCase());
-
-    if (!user) {
-      return {
-        ok: false,
-        code: "not_found",
-        message: "No encontramos una cuenta con ese correo.",
-      };
+      return mapRegisterFailure("server_error");
     }
 
-    return {
-      ok: true,
-      message: "Se preparo la recuperacion de acceso para ese correo.",
-    };
+    const data = await parseJson<LoginResponse>(response);
+    const token = data?.accessToken;
+    const user = mapUser(data?.user);
+
+    if (token && user) {
+      writeSession({ token });
+      return { ok: true, email: user.email, user };
+    }
+
+    writeSession(null);
+    return { ok: true, email: input.email.trim() };
   } catch (error) {
-    return {
-      ok: false,
-      code: error instanceof Error && error.message === "network_error" ? "network_error" : "server_error",
-      message:
-        error instanceof Error && error.message === "network_error"
-          ? "No se pudo conectar con el servicio. Intenta de nuevo."
-          : "No se pudo iniciar la recuperacion. Intenta de nuevo.",
-    };
+    writeSession(null);
+
+    if (error instanceof Error && error.message === "api_url_missing") {
+      return mapRegisterFailure("config_error");
+    }
+
+    if (error instanceof Error && error.message === "network_error") {
+      return mapRegisterFailure("network_error");
+    }
+
+    return mapRegisterFailure("server_error");
   }
 }
 
 export async function logout() {
-  await simulateLatency();
   writeSession(null);
 }

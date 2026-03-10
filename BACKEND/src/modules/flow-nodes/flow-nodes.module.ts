@@ -14,7 +14,10 @@ import { Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import {
+  AuthenticatedUser,
+  requireBusinessId,
+} from '../../auth/types/authenticated-user.type';
 import { PrismaService } from '../../prisma/prisma.service';
 
 class CreateFlowNodeDto {
@@ -72,16 +75,19 @@ class FlowNodesService {
   constructor(private readonly prisma: PrismaService) {}
 
   list(user: AuthenticatedUser) {
+    const businessId = requireBusinessId(user);
+
     return this.prisma.flowNode.findMany({
-      where: { flow: { businessId: user.businessId } },
+      where: { flow: { businessId } },
       include: { options: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async get(user: AuthenticatedUser, id: string) {
+    const businessId = requireBusinessId(user);
     const flowNode = await this.prisma.flowNode.findFirst({
-      where: { id, flow: { businessId: user.businessId } },
+      where: { id, flow: { businessId } },
       include: { options: true },
     });
 
@@ -93,8 +99,10 @@ class FlowNodesService {
   }
 
   async create(user: AuthenticatedUser, dto: CreateFlowNodeDto) {
+    const businessId = requireBusinessId(user);
+
     await this.prisma.flow.findFirstOrThrow({
-      where: { id: dto.flowId, businessId: user.businessId },
+      where: { id: dto.flowId, businessId },
     });
 
     return this.prisma.flowNode.create({
@@ -111,10 +119,11 @@ class FlowNodesService {
 
   async update(user: AuthenticatedUser, id: string, dto: UpdateFlowNodeDto) {
     await this.get(user, id);
+    const businessId = requireBusinessId(user);
 
     if (dto.flowId) {
       await this.prisma.flow.findFirstOrThrow({
-        where: { id: dto.flowId, businessId: user.businessId },
+        where: { id: dto.flowId, businessId },
       });
     }
 

@@ -2,7 +2,8 @@ export type AuthUser = {
   id: string;
   email: string;
   name?: string;
-  phone?: string;
+  businessId?: string;
+  role?: string;
 };
 
 export type LoginValues = {
@@ -18,7 +19,7 @@ export type RegisterValues = {
   confirmPassword: string;
 };
 
-export type AuthMode = "login" | "register" | "recover";
+export type AuthMode = "login" | "register";
 
 export type AuthStatusTone = "neutral" | "error" | "success" | "warning";
 
@@ -34,6 +35,18 @@ export type AuthResult =
     }
   | {
       ok: false;
-      code: "invalid_credentials" | "email_exists" | "network_error" | "server_error" | "not_found";
+      code: "invalid_credentials" | "network_error" | "server_error" | "config_error";
+      message: string;
+    };
+
+export type RegisterResult =
+  | {
+      ok: true;
+      email: string;
+      user?: AuthUser;
+    }
+  | {
+      ok: false;
+      code: "duplicate_email" | "network_error" | "server_error" | "config_error";
       message: string;
     };

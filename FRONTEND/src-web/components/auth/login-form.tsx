@@ -1,21 +1,19 @@
 import { KeyRound, LoaderCircle, Mail } from "lucide-react";
+import { Field } from "@/components/auth/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field } from "@/components/auth/field";
 import type { LoginValues } from "@/types/auth";
 
 export function LoginForm({
   authBusy,
   errors,
   onChange,
-  onRecover,
   onSubmit,
   values,
 }: {
   authBusy: boolean;
   errors: Partial<Record<keyof LoginValues, string>>;
   onChange: React.Dispatch<React.SetStateAction<LoginValues>>;
-  onRecover: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   values: LoginValues;
 }) {
@@ -35,15 +33,13 @@ export function LoginForm({
           autoComplete="current-password"
           disabled={authBusy}
           onChange={(event) => onChange((current) => ({ ...current, password: event.target.value }))}
-          placeholder="Minimo 8 caracteres"
+          placeholder="Minimo 6 caracteres"
           type="password"
           value={values.password}
         />
       </Field>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button className="text-sm text-panel-ink underline-offset-4 hover:underline" onClick={onRecover} type="button">
-          ¿Olvidaste tu contrasena?
-        </button>
+        <p className="text-sm text-muted-foreground">Usa las credenciales activas configuradas en el backend.</p>
         <Button disabled={authBusy} type="submit">
           {authBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
           Entrar

@@ -1,0 +1,2 @@
+ALTER TABLE users
+ALTER COLUMN business_id DROP NOT NULL;

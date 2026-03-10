@@ -13,7 +13,10 @@ import {
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import {
+  AuthenticatedUser,
+  requireBusinessId,
+} from '../../auth/types/authenticated-user.type';
 import { PrismaService } from '../../prisma/prisma.service';
 
 class CreateWhatsappSessionDto {
@@ -58,9 +61,11 @@ class WhatsappSessionsService {
   }
 
   create(user: AuthenticatedUser, dto: CreateWhatsappSessionDto) {
+    const businessId = requireBusinessId(user);
+
     return this.prisma.whatsappSession.create({
       data: {
-        businessId: user.businessId,
+        businessId,
         sessionKey: dto.sessionKey,
         phoneNumber: dto.phoneNumber,
         qrCode: dto.qrCode,
@@ -70,7 +75,7 @@ class WhatsappSessionsService {
   }
 
   async update(user: AuthenticatedUser, id: string, dto: UpdateWhatsappSessionDto) {
-    await this.get(user.businessId, id);
+    await this.get(requireBusinessId(user), id);
     return this.prisma.whatsappSession.update({
       where: { id },
       data: {
@@ -83,7 +88,7 @@ class WhatsappSessionsService {
   }
 
   async remove(user: AuthenticatedUser, id: string) {
-    await this.get(user.businessId, id);
+    await this.get(requireBusinessId(user), id);
     return this.prisma.whatsappSession.delete({ where: { id } });
   }
 }
@@ -95,12 +100,12 @@ class WhatsappSessionsController {
 
   @Get()
   findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.whatsappSessionsService.list(user.businessId);
+    return this.whatsappSessionsService.list(requireBusinessId(user));
   }
 
   @Get(':id')
   findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    return this.whatsappSessionsService.get(user.businessId, id);
+    return this.whatsappSessionsService.get(requireBusinessId(user), id);
   }
 
   @Post()

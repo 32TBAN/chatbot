@@ -14,7 +14,10 @@ import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import {
+  AuthenticatedUser,
+  requireBusinessId,
+} from '../../auth/types/authenticated-user.type';
 import { PrismaService } from '../../prisma/prisma.service';
 
 class CreateFlowOptionDto {
@@ -64,15 +67,18 @@ class FlowOptionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   list(user: AuthenticatedUser) {
+    const businessId = requireBusinessId(user);
+
     return this.prisma.flowOption.findMany({
-      where: { flowNode: { flow: { businessId: user.businessId } } },
+      where: { flowNode: { flow: { businessId } } },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async get(user: AuthenticatedUser, id: string) {
+    const businessId = requireBusinessId(user);
     const flowOption = await this.prisma.flowOption.findFirst({
-      where: { id, flowNode: { flow: { businessId: user.businessId } } },
+      where: { id, flowNode: { flow: { businessId } } },
     });
 
     if (!flowOption) {
@@ -83,13 +89,15 @@ class FlowOptionsService {
   }
 
   async create(user: AuthenticatedUser, dto: CreateFlowOptionDto) {
+    const businessId = requireBusinessId(user);
+
     await this.prisma.flowNode.findFirstOrThrow({
-      where: { id: dto.flowNodeId, flow: { businessId: user.businessId } },
+      where: { id: dto.flowNodeId, flow: { businessId } },
     });
 
     if (dto.nextNodeId) {
       await this.prisma.flowNode.findFirstOrThrow({
-        where: { id: dto.nextNodeId, flow: { businessId: user.businessId } },
+        where: { id: dto.nextNodeId, flow: { businessId } },
       });
     }
 
@@ -98,16 +106,17 @@ class FlowOptionsService {
 
   async update(user: AuthenticatedUser, id: string, dto: UpdateFlowOptionDto) {
     await this.get(user, id);
+    const businessId = requireBusinessId(user);
 
     if (dto.flowNodeId) {
       await this.prisma.flowNode.findFirstOrThrow({
-        where: { id: dto.flowNodeId, flow: { businessId: user.businessId } },
+        where: { id: dto.flowNodeId, flow: { businessId } },
       });
     }
 
     if (dto.nextNodeId) {
       await this.prisma.flowNode.findFirstOrThrow({
-        where: { id: dto.nextNodeId, flow: { businessId: user.businessId } },
+        where: { id: dto.nextNodeId, flow: { businessId } },
       });
     }
 

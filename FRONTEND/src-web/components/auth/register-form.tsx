@@ -21,15 +21,15 @@ export function RegisterForm({
 }) {
   return (
     <form className="mt-6 grid gap-5 sm:grid-cols-2" onSubmit={onSubmit}>
-      <Field error={errors.name} icon={UserRound} label="Name" value={values.name}>
+      <Field error={errors.name} icon={UserRound} label="Nombre" value={values.name}>
         <Input
           disabled={authBusy}
           onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
-          placeholder="Opcional"
+          placeholder="Tu nombre"
           value={values.name}
         />
       </Field>
-      <Field error={errors.phone} icon={Phone} label="Phone" value={values.phone}>
+      <Field error={errors.phone} icon={Phone} label="Telefono" value={values.phone}>
         <Input
           disabled={authBusy}
           onChange={(event) => onChange((current) => ({ ...current, phone: event.target.value }))}
@@ -51,7 +51,7 @@ export function RegisterForm({
           autoComplete="new-password"
           disabled={authBusy}
           onChange={(event) => onChange((current) => ({ ...current, password: event.target.value }))}
-          placeholder="Minimo 8 caracteres"
+          placeholder="Minimo 6 caracteres"
           type="password"
           value={values.password}
         />

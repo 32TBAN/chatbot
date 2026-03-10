@@ -41,7 +41,7 @@ CREATE TABLE businesses (
 -- =========================
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
     email VARCHAR(120) NOT NULL UNIQUE,

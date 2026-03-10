@@ -1,5 +1,10 @@
 import type { LoginValues, RegisterValues } from "@/types/auth";
 
+export function validateName(name: string) {
+  if (!name.trim()) return "El nombre es obligatorio.";
+  return undefined;
+}
+
 export function validateEmail(email: string) {
   if (!email.trim()) return "El email es obligatorio.";
   const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -9,7 +14,7 @@ export function validateEmail(email: string) {
 
 export function validatePassword(password: string) {
   if (!password.trim()) return "La contrasena es obligatoria.";
-  if (password.trim().length < 8) return "La contrasena debe tener al menos 8 caracteres.";
+  if (password.trim().length < 6) return "La contrasena debe tener al menos 6 caracteres.";
   return undefined;
 }
 
@@ -22,6 +27,7 @@ export function validateLogin(values: LoginValues) {
 
 export function validateRegister(values: RegisterValues) {
   const errors: Partial<Record<keyof RegisterValues, string>> = {
+    name: validateName(values.name),
     email: validateEmail(values.email),
     password: validatePassword(values.password),
   };

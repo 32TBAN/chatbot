@@ -12,7 +12,10 @@ import {
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import {
+  AuthenticatedUser,
+  requireBusinessId,
+} from '../../auth/types/authenticated-user.type';
 import { TenantPrismaCrudService } from '../../common/crud/tenant-prisma-crud.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -41,8 +44,10 @@ class FlowsService extends TenantPrismaCrudService {
   }
 
   get(user: AuthenticatedUser, id: string) {
+    const businessId = requireBusinessId(user);
+
     return this.prisma.flow.findFirst({
-      where: { id, businessId: user.businessId },
+      where: { id, businessId },
       include: { flowNodes: true },
     });
   }
