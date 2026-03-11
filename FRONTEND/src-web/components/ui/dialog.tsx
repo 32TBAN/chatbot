@@ -37,7 +37,7 @@ export function Dialog({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
       {children}
     </div>,
     document.body,
@@ -64,7 +64,7 @@ export function DialogContent({
   return (
     <div
       className={cn(
-        "relative z-10 w-full max-w-2xl rounded-[1.5rem] border border-border bg-card shadow-[0_30px_120px_rgba(20,28,38,0.18)]",
+        "relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-[min(960px,100%)] flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_30px_120px_rgba(20,28,38,0.18)] sm:max-h-[calc(100vh-3rem)]",
         className,
       )}
       role="dialog"
@@ -76,11 +76,11 @@ export function DialogContent({
 }
 
 export function DialogHeader({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex items-start justify-between gap-4 border-b border-border px-6 py-5", className)}>{children}</div>;
+  return <div className={cn("flex shrink-0 items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6 sm:py-5", className)}>{children}</div>;
 }
 
 export function DialogTitle({ children, className }: { children: ReactNode; className?: string }) {
-  return <h3 className={cn("font-display text-2xl uppercase tracking-[0.1em] text-panel-ink", className)}>{children}</h3>;
+  return <h3 className={cn("font-display text-xl uppercase tracking-[0.1em] text-panel-ink sm:text-2xl", className)}>{children}</h3>;
 }
 
 export function DialogDescription({ children, className }: { children: ReactNode; className?: string }) {
@@ -88,11 +88,11 @@ export function DialogDescription({ children, className }: { children: ReactNode
 }
 
 export function DialogBody({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("grid gap-5 px-6 py-5", className)}>{children}</div>;
+  return <div className={cn("grid min-h-0 flex-1 gap-5 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5", className)}>{children}</div>;
 }
 
 export function DialogFooter({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex flex-col-reverse gap-3 border-t border-border px-6 py-5 sm:flex-row sm:justify-end", className)}>{children}</div>;
+  return <div className={cn("flex shrink-0 flex-col-reverse gap-3 border-t border-border px-5 py-4 sm:flex-row sm:justify-end sm:px-6 sm:py-5", className)}>{children}</div>;
 }
 
 export function DialogCloseButton({ onClick }: { onClick: () => void }) {
