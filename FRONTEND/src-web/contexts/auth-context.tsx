@@ -8,7 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { getSessionUser, login, logout, register } from "@/services/auth-service";
+import { getSessionUser, getSessionToken, login, logout, register } from "@/services/auth-service";
 import { validateLogin, validateRegister } from "@/lib/validation/auth";
 import type { AuthMode, AuthStatus, AuthUser, LoginValues, RegisterValues } from "@/types/auth";
 
@@ -24,6 +24,9 @@ type AuthContextValue = {
   registerValues: RegisterValues;
   logoutBusy: boolean;
   sessionUser: AuthUser | null;
+  refreshSession: () => Promise<AuthUser | null>;
+  getAccessToken: () => string | null;
+  setSessionUser: Dispatch<SetStateAction<AuthUser | null>>;
   setLoginValues: Dispatch<SetStateAction<LoginValues>>;
   setRegisterValues: Dispatch<SetStateAction<RegisterValues>>;
   submitLogin: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -79,6 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchMode = (mode: AuthMode) => {
     setAuthMode(mode);
     setAuthStatus(null);
+  };
+
+  const refreshSession = async () => {
+    const user = await getSessionUser();
+    setSessionUser(user);
+    return user;
   };
 
   const submitLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -152,7 +161,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         registerValues,
         logoutBusy,
         performLogout,
+        refreshSession,
         sessionUser,
+        getAccessToken: getSessionToken,
+        setSessionUser,
         setLoginValues,
         setRegisterValues,
         submitLogin,

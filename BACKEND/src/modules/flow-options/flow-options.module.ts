@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Injectable,
   Module,
   NotFoundException,
   Param,
@@ -63,6 +64,7 @@ class UpdateFlowOptionDto {
   sortOrder?: number;
 }
 
+@Injectable()
 class FlowOptionsService {
   constructor(private readonly prisma: PrismaService) {}
 

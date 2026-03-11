@@ -22,6 +22,7 @@ enum BusinessStatus {
 enum WhatsappSessionStatus {
   pending
   connected
+  paused
   disconnected
   expired
 }
@@ -317,3 +318,4 @@ model Payment {
   @@index([businessId], map: "idx_payments_business_id")
   @@map("payments")
 }
+

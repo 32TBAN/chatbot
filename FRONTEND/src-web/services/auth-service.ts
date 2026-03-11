@@ -1,5 +1,6 @@
 export {
   getSessionUser,
+  getSessionToken,
   login,
   logout,
   register,

@@ -11,6 +11,10 @@ type BackendUser = {
   name?: string | null;
   businessId?: string | null;
   role?: string | null;
+  business?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
 };
 
 type LoginResponse = {
@@ -47,6 +51,10 @@ function readSession(): StoredSession | null {
   }
 }
 
+export function getSessionToken() {
+  return readSession()?.token ?? null;
+}
+
 function writeSession(session: StoredSession | null) {
   if (!session) {
     localStorage.removeItem(SESSION_KEY);
@@ -67,6 +75,12 @@ function mapUser(user: BackendUser | null | undefined): AuthUser | null {
     name: user.name ?? undefined,
     businessId: user.businessId ?? undefined,
     role: user.role ?? undefined,
+    business: user.business
+      ? {
+          id: user.business.id ?? undefined,
+          name: user.business.name ?? undefined,
+        }
+      : undefined,
   };
 }
 

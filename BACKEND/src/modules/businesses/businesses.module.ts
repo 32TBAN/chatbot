@@ -3,6 +3,7 @@ import {
   ConflictException,
   Controller,
   Get,
+  Injectable,
   Module,
   Param,
   Patch,
@@ -133,6 +134,7 @@ class CreateBusinessDto {
   timezone?: string;
 }
 
+@Injectable()
 class BusinessesService {
   constructor(private readonly prisma: PrismaService) {}
 

@@ -1,50 +1,45 @@
-# Frontend Auth Integration
+﻿# Acceso Conectado a la Cuenta Real
 
-## Understanding Summary
+## Resumen
 
-- Integrate `FRONTEND/src-web` with the real NestJS backend in `BACKEND/src`.
-- Use the backend API prefix `/api`, with auth endpoints at `/api/auth/login` and `/api/auth/me`.
-- Limit the first phase to login and session restoration only.
-- Remove the mock auth flow based on frontend-only users in `localStorage`.
-- Hide registration and password recovery from the active UI for now.
-- Persist the JWT in `localStorage` as an MVP decision.
-- Configure the backend base URL through Vite using `VITE_API_URL`.
+- La primera etapa de acceso se centrara en permitir que cada usuario entre con su cuenta real.
+- El objetivo es dejar atras un acceso de prueba y pasar a una experiencia autentica y consistente.
+- En esta fase, la prioridad es el ingreso y la continuidad de la sesion.
+- Otras secciones del panel podran seguir mostrando informacion de ejemplo mientras el acceso ya opera de forma real.
+- La direccion de acceso se mantendra configurable para facilitar pruebas y despliegues.
 
-## Assumptions
+## Supuestos
 
-- `POST /auth/login` returns `accessToken` plus a `user` object.
-- `GET /auth/me` accepts `Authorization: Bearer <token>`.
-- If `/auth/me` fails, the frontend should clear the local session and return to login.
-- No other dashboard sections need live backend data in this phase.
+- El sistema podra confirmar correctamente si una persona tiene una sesion valida.
+- Si la sesion deja de ser valida, el producto la cerrara y pedira volver a ingresar.
+- En esta fase no es necesario conectar aun el resto del panel con informacion real.
+- La experiencia debe dejar mensajes claros ante credenciales incorrectas, problemas de conexion o interrupciones de sesion.
 
 ## Decision Log
 
-- Decision: integrate `FRONTEND/src-web`.
-  Alternatives: `FRONTEND/src`, both frontends.
-  Why: the new panel is the correct target for ongoing work.
-- Decision: scope the first phase to authentication only.
-  Alternatives: connect more dashboard modules immediately.
-  Why: this keeps the change small, testable, and low-risk.
-- Decision: use JWT persistence in `localStorage`.
-  Alternatives: cookies or no session persistence.
-  Why: acceptable MVP trade-off with the current backend.
-- Decision: use `VITE_API_URL` for the backend base URL.
-  Alternatives: hardcoded URL or same-origin relative paths.
-  Why: avoids hardcoding and keeps development/deployment flexible.
-- Decision: hide registration and recovery.
-  Alternatives: keep visible with placeholders, implement now.
-  Why: the visible backend auth contract currently supports login and `me`.
+- Decision: priorizar el acceso real como primer paso de conexion.
+  Alternatives: conectar varios modulos al mismo tiempo.
+  Why: reduce riesgo y permite validar una base solida primero.
+- Decision: dejar fuera por ahora otras funciones visibles como registro o recuperacion si no estan listas.
+  Alternatives: mostrarlas incompletas o activarlas antes de tiempo.
+  Why: evita prometer una experiencia que aun no esta cerrada.
+- Decision: mantener la sesion para facilitar continuidad de uso.
+  Alternatives: pedir ingreso cada vez.
+  Why: mejora la experiencia diaria del usuario.
+- Decision: mantener flexible la direccion de conexion del servicio.
+  Alternatives: fijarla manualmente.
+  Why: ayuda a adaptar el producto a distintos entornos sin friccion.
 
-## Final Design
+## Propuesta
 
-The frontend will keep the existing auth context and login screen structure, but the auth source of truth changes from mock browser state to the real backend API. A small API helper will read `VITE_API_URL`, normalize request paths, and provide clear failures for missing configuration and HTTP/network errors.
+El acceso del producto debe conectarse con la cuenta real del usuario y sostener su sesion mientras siga siendo valida. De esta manera, la persona entra con sus credenciales, retoma su trabajo sin pasos extra y solo vuelve a ingresar cuando realmente hace falta.
 
-`src-web/lib/auth.ts` will manage the token lifecycle. On login, it will call `POST /auth/login`, validate that an `accessToken` is present, persist the token locally, and return the backend user. On app bootstrap, `getSessionUser()` will read the token and call `GET /auth/me`. If that call fails due to authorization or malformed data, the stored token is removed and the user is treated as signed out. Logout remains frontend-only and clears local session state.
+Si el sistema detecta que la sesion ya no es valida, debe cerrar el acceso de forma ordenada y llevar al usuario nuevamente a la pantalla de ingreso. Si hay errores de credenciales, problemas de conexion o respuestas incompletas, el producto debe explicarlo con mensajes directos y comprensibles.
 
-The auth UI will be reduced to login-only for this phase. Registration and recovery will no longer be part of the active navigation, which avoids exposing unfinished backend capabilities. Validation remains local in the form, while backend failures are mapped into user-facing messages for invalid credentials, connection problems, and unexpected server responses.
+En esta etapa, el valor principal no esta en activar todos los modulos con informacion real, sino en asegurar una puerta de entrada estable y confiable para el resto de la experiencia.
 
-## Risks
+## Riesgos
 
-- Storing JWT in `localStorage` is acceptable for MVP but not ideal for hardened production security.
-- If the backend response shape changes, the frontend auth parser will need to be updated.
-- Other dashboard sections still use mock data and remain intentionally out of scope.
+- Si el acceso deja de reflejar bien el estado real de la sesion, la experiencia perdera confianza.
+- Si los mensajes no distinguen bien entre error de acceso y problema de conexion, el usuario puede frustrarse.
+- Si otras areas del panel siguen con informacion de ejemplo por mucho tiempo, puede generarse una expectativa desigual.

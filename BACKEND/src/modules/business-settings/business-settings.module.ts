@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Injectable,
   Module,
   Patch,
   UseGuards,
@@ -54,6 +55,7 @@ class UpdateBusinessSettingsDto {
   supportEnabled?: boolean;
 }
 
+@Injectable()
 class BusinessSettingsService {
   constructor(private readonly prisma: PrismaService) {}
 

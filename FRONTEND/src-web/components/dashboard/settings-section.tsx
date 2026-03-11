@@ -1,48 +1,355 @@
+import { ArrowRight, Building2, Globe2, Mail, MapPin, Phone, Store, Text, Workflow, type LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { settingsGroups } from "@/data/dashboard";
+import { Input } from "@/components/ui/input";
+import { createBusiness } from "@/services/business-service";
+import { useAuth } from "@/contexts/auth-context";
+import type { AuthUser } from "@/types/auth";
 
-export function SettingsSection() {
+const INDUSTRY_OPTIONS = [
+  { value: "salud", label: "Salud" },
+  { value: "retail", label: "Retail" },
+  { value: "educacion", label: "Educacion" },
+  { value: "restaurante", label: "Restaurante" },
+  { value: "servicios", label: "Servicios" },
+  { value: "belleza", label: "Belleza" },
+  { value: "otro", label: "Otro" },
+] as const;
+
+function normalizeSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .split("/")[0]
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function SettingsSection({
+  focusFormSignal,
+  onBusinessCreated,
+  sessionUser,
+  setupIncomplete,
+}: {
+  focusFormSignal: number;
+  onBusinessCreated: () => void;
+  sessionUser: AuthUser;
+  setupIncomplete: boolean;
+}) {
+  const { getAccessToken, refreshSession, setSessionUser } = useAuth();
+  const [businessName, setBusinessName] = useState(sessionUser.business?.name ?? "");
+  const [businessEmail, setBusinessEmail] = useState(sessionUser.email);
+  const [businessDescription, setBusinessDescription] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+  const [businessSlug, setBusinessSlug] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [showPhoneField, setShowPhoneField] = useState(false);
+  const [businessPhone, setBusinessPhone] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [customIndustry, setCustomIndustry] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const formRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (detectedTimezone) {
+      setTimezone(detectedTimezone);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!focusFormSignal) return;
+
+    formRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [focusFormSignal]);
+
+  const slugValue = useMemo(() => normalizeSlug(businessSlug), [businessSlug]);
+  const finalIndustry = industry === "otro" ? customIndustry.trim() : industry;
+
+  const handleSubmit = async () => {
+    setFormError(null);
+    setFormSuccess(null);
+
+    if (!businessName.trim()) {
+      setFormError("Ingresa el nombre del negocio.");
+      return;
+    }
+
+    if (!businessEmail.trim()) {
+      setFormError("Ingresa el correo del negocio.");
+      return;
+    }
+
+    if (!slugValue) {
+      setFormError("Ingresa un slug o pagina web valida.");
+      return;
+    }
+
+    if (!industry) {
+      setFormError("Selecciona la industria del negocio.");
+      return;
+    }
+
+    if (industry === "otro" && !customIndustry.trim()) {
+      setFormError("Escribe la industria del negocio.");
+      return;
+    }
+
+    const token = getAccessToken();
+    if (!token) {
+      setFormError("No hay una sesion valida para crear el negocio.");
+      return;
+    }
+
+    setIsSaving(true);
+    const result = await createBusiness({
+      name: businessName,
+      slug: slugValue,
+      description: businessDescription,
+      phone: showPhoneField ? businessPhone : undefined,
+      email: businessEmail,
+      address: businessAddress,
+      industry: finalIndustry,
+      timezone,
+      token,
+    });
+    setIsSaving(false);
+
+    if (!result.ok) {
+      if (result.code === "conflict") {
+        const refreshed = await refreshSession();
+        if (refreshed) {
+          onBusinessCreated();
+          return;
+        }
+      }
+
+      setFormError(result.message);
+      return;
+    }
+
+    const refreshed = await refreshSession();
+    if (!refreshed) {
+      setSessionUser((current) =>
+        current
+          ? {
+              ...current,
+              businessId: result.business.id,
+              business: {
+                id: result.business.id,
+                name: result.business.name,
+              },
+            }
+          : current,
+      );
+    }
+
+    setFormSuccess("Negocio guardado correctamente.");
+    onBusinessCreated();
+  };
+
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_340px]">
-      <Card className="bg-card/95">
-        <CardHeader>
-          <CardDescription>Ajustes esenciales</CardDescription>
-          <CardTitle>Configuracion general del negocio</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          {settingsGroups.map((group) => (
-            <div key={group.title} className="rounded-lg border border-border px-4 py-4">
-              <p className="font-medium text-panel-ink">{group.title}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{group.detail}</p>
-              <Button variant="ghost" className="mt-4 px-0 text-panel-ink hover:bg-transparent">
-                Editar modulo
+      <div className="grid gap-6">
+        <Card className="border-amber-300/70 bg-card/95">
+          <CardHeader className="border-amber-300/60 bg-amber-100/40">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardDescription>Configuracion del negocio</CardDescription>
+                <CardTitle>
+                  {setupIncomplete ? "Completa el perfil del negocio para continuar" : "Actualiza la informacion del negocio"}
+                </CardTitle>
+              </div>
+              <Badge variant={setupIncomplete ? "warning" : "success"}>
+                {setupIncomplete ? "Completar ahora" : "Negocio activo"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 py-5">
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              Define la informacion principal del negocio. Con esto podras empezar a usar el panel con datos reales.
+            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              {[
+                "Automatizaciones listas para trabajar con datos reales.",
+                "QR y canal principal preparados para la operacion.",
+                "Agenda, catalogo e historial habilitados al completar el negocio.",
+              ].map((item) => (
+                <div key={item} className="rounded-lg border border-border bg-card px-4 py-4">
+                  <p className="text-sm text-panel-ink">{item}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/95" id="business-setup-form" ref={formRef}>
+          <CardHeader>
+            <CardDescription>Datos del negocio</CardDescription>
+            <CardTitle>Completa la informacion principal</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <Field label="Nombre del negocio" icon={Store}>
+              <Input
+                onChange={(event) => setBusinessName(event.target.value)}
+                placeholder="Ej. Clinica Norte o Tienda Delta"
+                value={businessName}
+              />
+            </Field>
+
+            <Field label="Correo del negocio" icon={Mail}>
+              <Input
+                onChange={(event) => setBusinessEmail(event.target.value)}
+                placeholder="negocio@dominio.com"
+                value={businessEmail}
+              />
+            </Field>
+
+            <Field label="Slug / pagina web" icon={Globe2}>
+              <Input
+                onChange={(event) => setBusinessSlug(event.target.value)}
+                placeholder="mi-negocio"
+                value={businessSlug}
+              />
+              {slugValue ? <p className="text-xs text-muted-foreground">Se guardara como: {slugValue}</p> : null}
+            </Field>
+
+            <Field label="Industria" icon={Building2}>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-muted/45 px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                onChange={(event) => setIndustry(event.target.value)}
+                value={industry}
+              >
+                <option value="">Selecciona una industria</option>
+                {INDUSTRY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {industry === "otro" ? (
+              <Field label="Otra industria" icon={Building2}>
+                <Input
+                  onChange={(event) => setCustomIndustry(event.target.value)}
+                  placeholder="Escribe la industria"
+                  value={customIndustry}
+                />
+              </Field>
+            ) : null}
+
+            <Field label="Zona horaria" icon={Workflow}>
+              <Input onChange={(event) => setTimezone(event.target.value)} value={timezone} />
+            </Field>
+
+            <Field label="Descripcion opcional" icon={Text}>
+              <textarea
+                className="min-h-[112px] w-full rounded-md border border-input bg-muted/45 px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                onChange={(event) => setBusinessDescription(event.target.value)}
+                placeholder="Describe brevemente el negocio"
+                value={businessDescription}
+              />
+            </Field>
+
+            <Field label="Direccion opcional" icon={MapPin}>
+              <Input
+                onChange={(event) => setBusinessAddress(event.target.value)}
+                placeholder="Direccion del negocio"
+                value={businessAddress}
+              />
+            </Field>
+
+            {showPhoneField ? (
+              <Field label="Telefono comercial opcional" icon={Phone}>
+                <Input
+                  onChange={(event) => setBusinessPhone(event.target.value)}
+                  placeholder="+593..."
+                  value={businessPhone}
+                />
+              </Field>
+            ) : (
+              <button
+                className="flex items-center gap-2 text-sm text-panel-ink underline-offset-4 hover:underline"
+                onClick={() => setShowPhoneField(true)}
+                type="button"
+              >
+                <Phone className="h-4 w-4" />
+                Agregar telefono comercial
+              </button>
+            )}
+
+            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+            {formSuccess ? <p className="text-sm text-success">{formSuccess}</p> : null}
+
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Puedes completar mas ajustes despues. Lo importante aqui es dejar creado el negocio.
+              </p>
+              <Button disabled={isSaving} onClick={handleSubmit} type="button">
+                {isSaving ? "Guardando..." : "Guardar y continuar"}
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card className="bg-card/95">
-        <CardHeader>
-          <CardDescription>Politica de acceso</CardDescription>
-          <CardTitle>Roles del MVP</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg border border-border px-4 py-4">
-            <p className="font-medium text-panel-ink">Owner</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Control total sobre conexion, automatizaciones, horarios y catalogo.
-            </p>
-          </div>
-          <div className="rounded-lg border border-border px-4 py-4">
-            <p className="font-medium text-panel-ink">Operador</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Acceso a citas, historial y revision de respuestas sugeridas.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6">
+        <Card className="bg-card/95">
+          <CardHeader>
+            <CardDescription>Despues de guardar</CardDescription>
+            <CardTitle>Modulos que se habilitan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[
+              { icon: Workflow, label: "Automatizaciones y flujos" },
+              { icon: Phone, label: "Conexion QR y canal principal" },
+              { icon: Store, label: "Agenda, catalogo e historial" },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="flex items-center gap-3 rounded-lg border border-border px-4 py-4">
+                  <div className="grid h-9 w-9 place-items-center rounded-md border border-border bg-muted/40">
+                    <Icon className="h-4 w-4 text-panel-ink" />
+                  </div>
+                  <p className="text-sm text-panel-ink">{item.label}</p>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
     </section>
+  );
+}
+
+function Field({
+  children,
+  icon: Icon,
+  label,
+}: {
+  children: ReactNode;
+  icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <div className="grid gap-2">
+      <label className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }

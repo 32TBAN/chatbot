@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Injectable,
   Module,
   NotFoundException,
   Param,
@@ -79,6 +80,7 @@ class UpdateAppointmentDto {
   status?: string;
 }
 
+@Injectable()
 class AppointmentsService {
   constructor(private readonly prisma: PrismaService) {}
 

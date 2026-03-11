@@ -4,6 +4,10 @@ export type AuthUser = {
   name?: string;
   businessId?: string;
   role?: string;
+  business?: {
+    id?: string;
+    name?: string;
+  };
 };
 
 export type LoginValues = {

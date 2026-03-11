@@ -2,3 +2,12 @@
 .idea/
 .DS_Store
 Thumbs.db
+.wa-sessions/
+.wwebjs_auth/
+node_modules/
+.env
+BACKEND/node_modules/
+BACKEND/.wa-sessions/
+BACKEND/.wwebjs_auth/
+BACKEND/.wwebjs_cache/
+BACKEND/.wwwebjs_cache/

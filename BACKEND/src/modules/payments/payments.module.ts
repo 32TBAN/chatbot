@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Injectable,
   Module,
   Param,
   Patch,
@@ -45,6 +46,7 @@ class CreatePaymentDto {
 
 class UpdatePaymentDto extends CreatePaymentDto {}
 
+@Injectable()
 class PaymentsService extends TenantPrismaCrudService {
   constructor(prisma: PrismaService) {
     super(prisma);

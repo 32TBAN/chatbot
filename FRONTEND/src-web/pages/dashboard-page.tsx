@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { headerStats, pageTitles } from "@/data/dashboard";
+import { useEffect, useState } from "react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
+import { pageTitles } from "@/data/dashboard";
 import { AutomationsSection } from "@/components/dashboard/automations-section";
 import { AppointmentsSection } from "@/components/dashboard/appointments-section";
 import { CatalogSection } from "@/components/dashboard/catalog-section";
@@ -12,14 +13,52 @@ import { TopBar } from "@/components/layout/topbar";
 import { useAuth } from "@/contexts/auth-context";
 import type { ViewId } from "@/types/dashboard";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+
+const BLOCKED_MESSAGE = "Completa el perfil del negocio para desbloquear el resto del panel.";
 
 export function DashboardPage() {
   const { logoutBusy, performLogout, sessionUser } = useAuth();
   const [activeView, setActiveView] = useState<ViewId>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
-  const page = pageTitles[activeView];
+  const [blockedNotice, setBlockedNotice] = useState<string | null>(null);
+  const [focusFormSignal, setFocusFormSignal] = useState(0);
+  const setupIncomplete = !sessionUser?.businessId || !sessionUser?.business?.name?.trim();
+
+  useEffect(() => {
+    if (setupIncomplete && activeView !== "settings") {
+      setActiveView("settings");
+    }
+  }, [activeView, setupIncomplete]);
 
   if (!sessionUser) return null;
+
+  const handleNavigate = (id: ViewId) => {
+    if (setupIncomplete && id !== "settings") {
+      setActiveView("settings");
+      setBlockedNotice(BLOCKED_MESSAGE);
+      setMenuOpen(false);
+      return;
+    }
+
+    setBlockedNotice(null);
+    setActiveView(id);
+    setMenuOpen(false);
+  };
+
+  const handleGoToSettingsForm = () => {
+    setBlockedNotice(null);
+    setActiveView("settings");
+    setMenuOpen(false);
+    setFocusFormSignal((current) => current + 1);
+  };
+
+  const handleBusinessCreated = () => {
+    setBlockedNotice(null);
+    setActiveView("overview");
+  };
+
+  const page = pageTitles[activeView];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -32,10 +71,8 @@ export function DashboardPage() {
         >
           <Sidebar
             activeView={activeView}
-            onNavigate={(id) => {
-              setActiveView(id);
-              setMenuOpen(false);
-            }}
+            onNavigate={handleNavigate}
+            setupIncomplete={setupIncomplete}
           />
         </aside>
 
@@ -54,7 +91,31 @@ export function DashboardPage() {
             onLogout={performLogout}
             onOpenMenu={() => setMenuOpen(true)}
             sessionUser={sessionUser}
+            setupIncomplete={setupIncomplete}
           />
+          {setupIncomplete ? (
+            <div className="border-b border-amber-300/70 bg-amber-100/70 px-4 py-4 text-panel-ink sm:px-6 lg:px-8">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-md border border-amber-400/70 bg-amber-200/60">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-panel-ink/70">Operacion restringida</p>
+                    <p className="mt-1 text-sm font-medium">Falta registrar el negocio para habilitar el MVP completo.</p>
+                    <p className="mt-1 text-sm text-panel-ink/75">
+                      Solo `Configuracion` esta disponible hasta completar el perfil base del negocio.
+                    </p>
+                    {blockedNotice ? <p className="mt-2 text-sm text-panel-ink/75">{blockedNotice}</p> : null}
+                  </div>
+                </div>
+                <Button onClick={handleGoToSettingsForm} variant="secondary">
+                  Ir a configuracion
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <div className="border-b border-border bg-background/70 px-4 py-6 backdrop-blur-sm sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-3xl">
@@ -68,28 +129,25 @@ export function DashboardPage() {
                   {page.description}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {headerStats.map((stat) => (
-                  <div key={stat.label} className="rounded-lg border border-border bg-card px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                      {stat.label}
-                    </p>
-                    <p className="mt-2 font-mono text-sm text-panel-ink">{stat.value}</p>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
 
           <div className="bg-grid bg-[size:32px_32px] px-4 py-6 sm:px-6 lg:px-8">
             <div className="grid gap-6">
-              {activeView === "overview" ? <OverviewSection /> : null}
+              {activeView === "overview" ? <OverviewSection sessionUser={sessionUser} /> : null}
               {activeView === "automations" ? <AutomationsSection /> : null}
               {activeView === "qr" ? <QrSection /> : null}
               {activeView === "appointments" ? <AppointmentsSection /> : null}
               {activeView === "catalog" ? <CatalogSection /> : null}
               {activeView === "history" ? <HistorySection /> : null}
-              {activeView === "settings" ? <SettingsSection /> : null}
+              {activeView === "settings" ? (
+                <SettingsSection
+                  focusFormSignal={focusFormSignal}
+                  onBusinessCreated={handleBusinessCreated}
+                  sessionUser={sessionUser}
+                  setupIncomplete={setupIncomplete}
+                />
+              ) : null}
             </div>
           </div>
         </main>

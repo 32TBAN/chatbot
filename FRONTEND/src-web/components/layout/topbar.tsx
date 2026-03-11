@@ -12,12 +12,14 @@ export function TopBar({
   onLogout,
   onOpenMenu,
   sessionUser,
+  setupIncomplete,
 }: {
   activeView: ViewId;
   logoutBusy: boolean;
   onLogout: () => void;
   onOpenMenu: () => void;
   sessionUser: AuthUser;
+  setupIncomplete: boolean;
 }) {
   const activeLabel = navItems.find((item) => item.id === activeView)?.shortLabel;
   const label = sessionUser.name?.trim() || sessionUser.email;
@@ -41,8 +43,8 @@ export function TopBar({
             placeholder="Buscar cliente, flujo o ajuste..."
           />
         </div>
-        <Badge variant="success" className="hidden sm:inline-flex">
-          Whatsapp estable
+        <Badge variant={setupIncomplete ? "warning" : "success"} className="hidden sm:inline-flex">
+          {setupIncomplete ? "Configuracion requerida" : "Whatsapp estable"}
         </Badge>
         <div className="hidden rounded-md border border-border bg-card px-3 py-2 lg:block">
           <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Sesion</p>

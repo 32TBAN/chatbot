@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Injectable,
   Module,
   Param,
   Patch,
@@ -67,6 +68,7 @@ class UpdateUserDto {
   isActive?: boolean;
 }
 
+@Injectable()
 class UsersService extends TenantPrismaCrudService {
   constructor(prisma: PrismaService) {
     super(prisma);

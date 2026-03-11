@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Injectable,
   Module,
   NotFoundException,
   Param,
@@ -71,6 +72,7 @@ class UpdateFlowNodeDto {
   isActive?: boolean;
 }
 
+@Injectable()
 class FlowNodesService {
   constructor(private readonly prisma: PrismaService) {}
 
