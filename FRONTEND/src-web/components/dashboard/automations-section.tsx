@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+﻿import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -9,7 +9,9 @@ import {
   LoaderCircle,
   Maximize2,
   Minimize2,
+  RotateCcw,
   Save,
+  SendHorizontal,
   Sparkles,
   Wand2,
 } from "lucide-react";
@@ -42,6 +44,12 @@ import { cn } from "@/lib/utils";
 
 const quickOrder: AutomationKey[] = ["welcome", "menu", "appointments", "products", "support"];
 type SectionTab = "quick" | "menu" | "keywords";
+type PreviewMessage = {
+  id: string;
+  menuOptions?: MenuOptionView[];
+  role: "bot" | "user";
+  text: string;
+};
 
 const sectionTabs: Array<{ id: SectionTab; label: string; icon: typeof Wand2 }> = [
   { id: "quick", label: "Automatizaciones rapidas", icon: Wand2 },
@@ -123,6 +131,9 @@ function normalizeFlow(flow: AutomationMainFlowView) {
   });
 }
 
+function normalizePreviewValue(value: string) {
+  return value.trim().toLowerCase();
+}
 export function AutomationsSection() {
   const { getAccessToken } = useAuth();
   const [serverSnapshot, setServerSnapshot] = useState<AutomationMainFlowView | null>(null);
@@ -345,7 +356,15 @@ export function AutomationsSection() {
         ) : null}
       </div>
 
-      <FloatingChatPreview collapsed={isPreviewCollapsed} onToggle={() => setIsPreviewCollapsed((current) => !current)} previewGreeting={previewGreeting} previewMenu={previewMenu} menuMessage={draft.menu.message} keyword={draft.keywords[0] ?? null} />
+      <FloatingChatPreview
+        collapsed={isPreviewCollapsed}
+        keywords={draft.keywords}
+        menuMessage={draft.menu.message}
+        onToggle={() => setIsPreviewCollapsed((current) => !current)}
+        previewGreeting={previewGreeting}
+        previewMenu={previewMenu}
+        quickAutomations={draft.quickAutomations}
+      />
 
       <Dialog onOpenChange={(open) => !open && setEditingKey(null)} open={Boolean(editingAutomation)}>
         <DialogOverlay onClick={() => setEditingKey(null)} />
@@ -393,19 +412,92 @@ export function AutomationsSection() {
 
 function FloatingChatPreview({
   collapsed,
-  keyword,
+  keywords,
   menuMessage,
   onToggle,
   previewGreeting,
   previewMenu,
+  quickAutomations,
 }: {
   collapsed: boolean;
-  keyword: KeywordView | null;
+  keywords: KeywordView[];
   menuMessage: string;
   onToggle: () => void;
   previewGreeting: string;
   previewMenu: MenuOptionView[];
+  quickAutomations: QuickAutomationView[];
 }) {
+  const [draftMessage, setDraftMessage] = useState("");
+  const [messages, setMessages] = useState<PreviewMessage[]>([]);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+  const fallbackMessage = "No entendi tu mensaje. Prueba una opcion del menu o escribe una palabra clave.";
+  const keywordRules = keywords.filter((item) => item.keyword.trim());
+  const automationMap = new Map(quickAutomations.map((item) => [item.key, item]));
+
+  useEffect(() => {
+    const node = messagesRef.current;
+    if (!node) return;
+    node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  const appendMessages = (nextMessages: Array<Omit<PreviewMessage, "id">>) => {
+    setMessages((current) => [
+      ...current,
+      ...nextMessages.map((item, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+        ...item,
+      })),
+    ]);
+  };
+
+  const resolveAutomationMessage = (targetKey: AutomationKey) => {
+    const automation = automationMap.get(targetKey);
+    if (!automation?.enabled) {
+      return "Esta automatizacion aun no esta activa.";
+    }
+
+    return automation.message.trim() || `Respuesta pendiente para ${automation.title.toLowerCase()}.`;
+  };
+
+  const submitPreview = (rawValue: string, displayValue = rawValue.trim()) => {
+    const value = rawValue.trim();
+    if (!value) return;
+
+    const normalized = normalizePreviewValue(value);
+    const numericChoice = Number.parseInt(normalized, 10);
+    const selectedByNumber = Number.isNaN(numericChoice) ? null : previewMenu[numericChoice - 1] ?? null;
+    const selectedByLabel = previewMenu.find((option) => normalizePreviewValue(option.label) === normalized) ?? null;
+    const matchedKeyword = keywordRules.find((item) => normalizePreviewValue(item.keyword) === normalized) ?? null;
+    const nextMessages: Array<Omit<PreviewMessage, "id">> = [{ role: "user", text: displayValue }];
+
+    if (normalized === "hola" || normalized === "menu") {
+      nextMessages.push(
+        { role: "bot", text: previewGreeting },
+        { role: "bot", text: menuMessage.trim() || "Elige una opcion para continuar.", menuOptions: previewMenu },
+      );
+      appendMessages(nextMessages);
+      return;
+    }
+
+    if (selectedByNumber || selectedByLabel) {
+      const option = selectedByNumber ?? selectedByLabel;
+      if (option) {
+        nextMessages.push({ role: "bot", text: resolveAutomationMessage(option.targetKey) });
+        appendMessages(nextMessages);
+        return;
+      }
+    }
+
+    if (matchedKeyword) {
+      nextMessages.push({ role: "bot", text: matchedKeyword.response.trim() || "Respuesta pendiente de configurar." });
+      appendMessages(nextMessages);
+      return;
+    }
+
+    nextMessages.push({ role: "bot", text: fallbackMessage });
+    appendMessages(nextMessages);
+  };
+
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-40 w-[min(420px,calc(100vw-1.5rem))] sm:bottom-6 sm:right-6 sm:w-[390px]">
       <div className="pointer-events-auto overflow-hidden rounded-[1.4rem] border border-border/80 bg-card shadow-[0_24px_80px_rgba(18,25,36,0.18)]">
@@ -424,7 +516,14 @@ function FloatingChatPreview({
           </div>
         </button>
         {!collapsed ? (
-          <div className="p-4">
+          <div className="grid gap-4 p-4">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-muted/30 px-3 py-2">
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Escribe hola, un numero o una palabra clave</p>
+              <Button onClick={() => setMessages([])} size="sm" type="button" variant="ghost">
+                <RotateCcw className="h-4 w-4" />
+                Reiniciar
+              </Button>
+            </div>
             <div className="overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(243,247,242,0.9),rgba(253,251,245,0.95))]">
               <div className="flex items-center gap-3 border-b border-border/80 bg-background/80 px-4 py-4">
                 <div className="grid h-11 w-11 place-items-center rounded-full bg-panel-ink text-panel-ivory"><Bot className="h-5 w-5" /></div>
@@ -433,15 +532,50 @@ function FloatingChatPreview({
                   <p className="text-sm text-muted-foreground">WhatsApp del negocio</p>
                 </div>
               </div>
-              <div className="grid max-h-[min(60vh,560px)] gap-3 overflow-y-auto p-4">
-                <ChatBubble align="right" title="Cliente">hola</ChatBubble>
-                <ChatBubble align="left" title="Bot">{previewGreeting}</ChatBubble>
-                <ChatBubble align="left" title="Bot">
-                  {menuMessage}
-                  {previewMenu.length ? <div className="mt-3 grid gap-2">{previewMenu.map((option, index) => <div className="rounded-xl border border-border/80 bg-background/80 px-3 py-2 text-sm" key={option.id}>{index + 1}. {option.label || "Opcion sin titulo"}</div>)}</div> : null}
-                </ChatBubble>
-                {keyword?.keyword.trim() ? <><ChatBubble align="right" title="Cliente">{keyword.keyword}</ChatBubble><ChatBubble align="left" title="Bot">{keyword.response || "Respuesta pendiente de configurar."}</ChatBubble></> : null}
+              <div className="grid max-h-[min(52vh,480px)] gap-3 overflow-y-auto p-4" ref={messagesRef}>
+                {messages.length ? messages.map((message) => (
+                  <ChatBubble align={message.role === "user" ? "right" : "left"} key={message.id} title={message.role === "user" ? "Cliente" : "Bot"}>
+                    {message.text}
+                    {message.menuOptions?.length ? (
+                      <div className="mt-3 grid gap-2">
+                        {message.menuOptions.map((option, index) => (
+                          <button
+                            className="rounded-xl border border-border/80 bg-background/90 px-3 py-2 text-left text-sm text-panel-ink transition-colors hover:bg-background"
+                            key={option.id}
+                            onClick={() => submitPreview(String(index + 1), option.label.trim() || `Opcion ${index + 1}`)}
+                            type="button"
+                          >
+                            {index + 1}. {option.label || "Opcion sin titulo"}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </ChatBubble>
+                )) : (
+                  <div className="grid gap-3 rounded-[1.25rem] border border-dashed border-border/80 bg-background/70 px-4 py-5 text-sm text-muted-foreground">
+                    <p className="font-medium text-panel-ink">Prueba el flujo antes de guardar.</p>
+                    <p>Escribe <span className="font-medium text-panel-ink">hola</span>, selecciona una opcion del menu o usa una palabra clave como <span className="font-medium text-panel-ink">{keywordRules[0]?.keyword || "horario"}</span>.</p>
+                  </div>
+                )}
               </div>
+              <form
+                className="flex items-center gap-2 border-t border-border/80 bg-background/85 p-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!draftMessage.trim()) return;
+                  submitPreview(draftMessage);
+                  setDraftMessage("");
+                }}
+              >
+                <Input
+                  onChange={(event) => setDraftMessage(event.target.value)}
+                  placeholder="Escribe hola, 1 o una palabra clave"
+                  value={draftMessage}
+                />
+                <Button disabled={!draftMessage.trim()} size="icon" type="submit">
+                  <SendHorizontal className="h-4 w-4" />
+                </Button>
+              </form>
             </div>
           </div>
         ) : null}
@@ -449,7 +583,6 @@ function FloatingChatPreview({
     </div>
   );
 }
-
 function MenuOptionEditor({ disableDown, disableUp, menuTargets, onChange, onMoveDown, onMoveUp, onRemove, option, position }: { disableDown: boolean; disableUp: boolean; menuTargets: Array<{ key: AutomationKey; label: string; enabled: boolean }>; onChange: (nextOption: MenuOptionView) => void; onMoveDown: () => void; onMoveUp: () => void; onRemove: () => void; option: MenuOptionView; position: number; }) {
   return (
     <div className="grid gap-4 rounded-[1.25rem] border border-border/80 bg-[linear-gradient(180deg,rgba(252,249,241,0.92),rgba(243,245,240,0.86))] p-4 shadow-sm lg:grid-cols-[72px_minmax(0,1.2fr)_minmax(0,1fr)_auto] lg:items-center">
@@ -510,4 +643,9 @@ function moveItem(items: MenuOptionView[], from: number, to: number) {
   next.splice(to, 0, item);
   return next.map((entry, index) => ({ ...entry, position: index + 1 }));
 }
+
+
+
+
+
 

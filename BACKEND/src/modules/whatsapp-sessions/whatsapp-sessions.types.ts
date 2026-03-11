@@ -1,14 +1,27 @@
-import { WhatsappSession, WhatsappSessionStatus } from '@prisma/client';
+﻿import { WhatsappSession, WhatsappSessionStatus } from '@prisma/client';
 
 export type RuntimeHandle = {
   client: WhatsappClient;
   token: symbol;
 };
 
+export type WhatsappMessage = {
+  body?: string;
+  from?: string;
+  fromMe?: boolean;
+  hasMedia?: boolean;
+  id?: {
+    _serialized?: string;
+  };
+  timestamp?: number;
+  type?: string;
+};
+
 export type WhatsappClient = {
   destroy: () => Promise<void>;
   initialize: () => Promise<void>;
   logout?: () => Promise<void>;
+  sendMessage?: (chatId: string, content: string) => Promise<unknown>;
   on: (event: string, listener: (...args: any[]) => void | Promise<void>) => void;
   info?: {
     wid?: {

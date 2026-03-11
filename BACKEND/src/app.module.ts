@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -10,6 +10,7 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { ProductsModule } from './modules/products/products.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { MessageInboxModule } from './modules/message-inbox/message-inbox.module';
 import { FlowsModule } from './modules/flows/flows.module';
 import { FlowNodesModule } from './modules/flow-nodes/flow-nodes.module';
 import { FlowOptionsModule } from './modules/flow-options/flow-options.module';
@@ -30,6 +31,7 @@ import { AutomationMainFlowModule } from './modules/automation-main-flow/automat
     ProductsModule,
     AppointmentsModule,
     MessagesModule,
+    MessageInboxModule,
     FlowsModule,
     FlowNodesModule,
     FlowOptionsModule,
@@ -39,3 +41,5 @@ import { AutomationMainFlowModule } from './modules/automation-main-flow/automat
   ],
 })
 export class AppModule {}
+
+

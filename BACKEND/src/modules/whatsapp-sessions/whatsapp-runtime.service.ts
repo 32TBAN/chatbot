@@ -1,5 +1,12 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { WhatsappSession, WhatsappSessionStatus } from '@prisma/client';
+﻿import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  FlowNodeType,
+  MessageDirection,
+  MessageType,
+  Prisma,
+  WhatsappSession,
+  WhatsappSessionStatus,
+} from '@prisma/client';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,6 +15,7 @@ import {
   LocalAuthFactory,
   RuntimeHandle,
   WhatsappClient,
+  WhatsappMessage,
 } from './whatsapp-sessions.types';
 
 const whatsappWebModule = require('whatsapp-web.js') as {
@@ -17,6 +25,29 @@ const whatsappWebModule = require('whatsapp-web.js') as {
 const qrCodeModule = require('qrcode') as {
   toDataURL: (value: string) => Promise<string>;
 };
+
+const MAIN_FLOW_NAME = 'main_whatsapp_automation';
+const KEYWORD_ROUTER_TITLE = '__keyword_router__';
+
+type FlowGraph = Prisma.FlowGetPayload<{
+  include: {
+    flowNodes: {
+      include: {
+        options: {
+          include: {
+            nextNode: true;
+          };
+          orderBy: {
+            sortOrder: 'asc';
+          };
+        };
+      };
+      orderBy: {
+        sortOrder: 'asc';
+      };
+    };
+  };
+}>;
 
 @Injectable()
 export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
@@ -199,6 +230,10 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     client.on('disconnected', () => {
       void this.handleDisconnected(session, WhatsappSessionStatus.disconnected, token);
     });
+
+    client.on('message', (message: WhatsappMessage) => {
+      void this.handleIncomingMessage(session, client, message, token);
+    });
   }
 
   private async handleQr(session: WhatsappSession, qr: string, token: symbol) {
@@ -249,6 +284,246 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
         lastSeenAt: new Date(),
       },
     });
+  }
+
+  private async handleIncomingMessage(
+    session: WhatsappSession,
+    client: WhatsappClient,
+    message: WhatsappMessage,
+    token: symbol,
+  ) {
+    if (!this.isCurrentHandle(session.businessId, token) || message.fromMe) {
+      return;
+    }
+
+    const chatId = message.from ?? null;
+    const phone = this.normalizePhone(chatId);
+    if (!chatId || !phone) {
+      return;
+    }
+
+    const externalMessageId = message.id?._serialized ?? null;
+    if (externalMessageId) {
+      const existingMessage = await this.prisma.message.findFirst({
+        where: {
+          businessId: session.businessId,
+          externalMessageId,
+        },
+        select: { id: true },
+      });
+
+      if (existingMessage) {
+        return;
+      }
+    }
+
+    const customer = await this.ensureCustomer(session.businessId, phone);
+    const sentAt = this.resolveSentAt(message.timestamp);
+    const inboundContent = message.body?.trim() || null;
+
+    await this.prisma.message.create({
+      data: {
+        businessId: session.businessId,
+        customerId: customer.id,
+        whatsappSessionId: session.id,
+        direction: MessageDirection.inbound,
+        messageType: this.mapMessageType(message.type, message.hasMedia),
+        content: inboundContent,
+        externalMessageId,
+        sentAt,
+      },
+    });
+
+    await this.markAlive(session, token);
+
+    const replies = await this.resolveBotReplies(session.businessId, inboundContent);
+    if (!replies.length || !client.sendMessage) {
+      return;
+    }
+
+    for (const reply of replies) {
+      const content = reply.trim();
+      if (!content) {
+        continue;
+      }
+
+      try {
+        await client.sendMessage(chatId, content);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to send automated reply for business ${session.businessId}: ${error instanceof Error ? error.message : 'unknown error'}`,
+        );
+        continue;
+      }
+
+      await this.prisma.message.create({
+        data: {
+          businessId: session.businessId,
+          customerId: customer.id,
+          whatsappSessionId: session.id,
+          direction: MessageDirection.outbound,
+          messageType: MessageType.text,
+          content,
+          sentAt: new Date(),
+        },
+      });
+    }
+  }
+
+  private async resolveBotReplies(businessId: string, inboundContent: string | null) {
+    const normalized = inboundContent?.trim().toLowerCase() ?? '';
+    if (!normalized) {
+      return [] as string[];
+    }
+
+    const flow = await this.findMainFlow(businessId);
+    if (!flow?.isActive) {
+      return [] as string[];
+    }
+
+    const welcomeNode = flow.flowNodes.find((item) => item.nodeType === FlowNodeType.welcome && item.isActive) ?? null;
+    const menuNode = flow.flowNodes.find((item) => item.nodeType === FlowNodeType.menu && item.isActive) ?? null;
+    const fallbackNode = flow.flowNodes.find((item) => item.nodeType === FlowNodeType.fallback && item.isActive) ?? null;
+    const keywordRouter = flow.flowNodes.find((item) => item.title === KEYWORD_ROUTER_TITLE && item.isActive) ?? null;
+
+    if (normalized === 'hola' || normalized === 'menu') {
+      const responses: string[] = [];
+      if (welcomeNode?.content?.trim()) {
+        responses.push(welcomeNode.content.trim());
+      }
+      if (menuNode) {
+        responses.push(this.formatMenuMessage(menuNode));
+      }
+      return responses;
+    }
+
+    const selectedOption = this.findMenuOption(menuNode, normalized);
+    if (selectedOption?.nextNode?.isActive && selectedOption.nextNode.content?.trim()) {
+      return [selectedOption.nextNode.content.trim()];
+    }
+
+    const keywordOption = keywordRouter?.options.find(
+      (item) => item.optionValue.trim().toLowerCase() === normalized && item.nextNode?.isActive,
+    );
+    if (keywordOption?.nextNode?.content?.trim()) {
+      return [keywordOption.nextNode.content.trim()];
+    }
+
+    if (fallbackNode?.content?.trim()) {
+      return [fallbackNode.content.trim()];
+    }
+
+    if (menuNode) {
+      return [`No entendi tu mensaje.\n\n${this.formatMenuMessage(menuNode)}`];
+    }
+
+    return [] as string[];
+  }
+
+  private async findMainFlow(businessId: string) {
+    return this.prisma.flow.findFirst({
+      where: { businessId, name: MAIN_FLOW_NAME },
+      include: {
+        flowNodes: {
+          include: {
+            options: {
+              include: {
+                nextNode: true,
+              },
+              orderBy: {
+                sortOrder: 'asc',
+              },
+            },
+          },
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
+      },
+    }) as Promise<FlowGraph | null>;
+  }
+
+  private findMenuOption(flowNode: FlowGraph['flowNodes'][number] | null, normalizedInput: string) {
+    if (!flowNode) {
+      return null;
+    }
+
+    const numericChoice = Number.parseInt(normalizedInput, 10);
+    if (!Number.isNaN(numericChoice)) {
+      return flowNode.options[numericChoice - 1] ?? null;
+    }
+
+    return (
+      flowNode.options.find(
+        (option) => option.optionLabel.trim().toLowerCase() === normalizedInput || option.optionValue.trim().toLowerCase() === normalizedInput,
+      ) ?? null
+    );
+  }
+
+  private formatMenuMessage(menuNode: FlowGraph['flowNodes'][number]) {
+    const lines = menuNode.options.map((option, index) => `${index + 1}. ${option.optionLabel}`);
+    const intro = menuNode.content?.trim() || 'Elige una opcion para continuar.';
+    return lines.length ? `${intro}\n\n${lines.join('\n')}` : intro;
+  }
+
+  private async ensureCustomer(businessId: string, phone: string) {
+    const existingCustomer = await this.prisma.customer.findFirst({
+      where: {
+        businessId,
+        phone,
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+      },
+    });
+
+    if (existingCustomer) {
+      return existingCustomer;
+    }
+
+    return this.prisma.customer.create({
+      data: {
+        businessId,
+        phone,
+        name: phone,
+        source: 'whatsapp',
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+      },
+    });
+  }
+
+  private mapMessageType(rawType?: string, hasMedia?: boolean) {
+    if (rawType === 'image') return MessageType.image;
+    if (rawType === 'document') return MessageType.document;
+    if (rawType === 'audio' || rawType === 'ptt') return MessageType.audio;
+    if (rawType === 'video') return MessageType.video;
+    if (rawType === 'location') return MessageType.location;
+    if (rawType === 'chat' || rawType === 'text') return MessageType.text;
+    if (hasMedia) return MessageType.document;
+    return MessageType.text;
+  }
+
+  private normalizePhone(chatId: string | null) {
+    if (!chatId) {
+      return null;
+    }
+
+    const numeric = chatId.split('@')[0]?.replace(/\D+/g, '') ?? '';
+    return numeric ? `+${numeric}` : null;
+  }
+
+  private resolveSentAt(timestamp?: number) {
+    if (!timestamp) {
+      return new Date();
+    }
+
+    return new Date(timestamp * 1000);
   }
 
   private async handleDisconnected(
