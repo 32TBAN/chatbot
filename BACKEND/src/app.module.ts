@@ -15,6 +15,7 @@ import { FlowNodesModule } from './modules/flow-nodes/flow-nodes.module';
 import { FlowOptionsModule } from './modules/flow-options/flow-options.module';
 import { CustomerNotesModule } from './modules/customer-notes/customer-notes.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { AutomationMainFlowModule } from './modules/automation-main-flow/automation-main-flow.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     FlowsModule,
     FlowNodesModule,
     FlowOptionsModule,
+    AutomationMainFlowModule,
     CustomerNotesModule,
     PaymentsModule,
   ],
