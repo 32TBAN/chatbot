@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { WhatsappSessionStatus } from '@prisma/client';
 import {
   AuthenticatedUser,
@@ -63,6 +63,24 @@ export class WhatsappSessionsService {
     return this.buildView(businessId, session.sessionKey, refreshed);
   }
 
+  async simulateInboundDebug(user: AuthenticatedUser, content: string) {
+    if (user.role !== 'owner') {
+      throw new ForbiddenException('Solo el owner puede usar el debug de WhatsApp');
+    }
+
+    const businessId = requireBusinessId(user);
+    const session = await this.prisma.whatsappSession.findUnique({
+      where: { businessId },
+    });
+
+    if (!session || session.status !== WhatsappSessionStatus.connected) {
+      throw new BadRequestException('La sesion de WhatsApp no esta conectada.');
+    }
+
+    const simulation = await this.runtime.simulateInboundDebug(session, content);
+    return this.getConversationPayload(businessId, simulation.customer.id);
+  }
+
   private async ensureSessionRecord(businessId: string) {
     const existing = await this.prisma.whatsappSession.findUnique({
       where: { businessId },
@@ -95,5 +113,55 @@ export class WhatsappSessionsService {
       hasStoredCredentials,
       this.runtime.isRuntimeActive(businessId),
     );
+  }
+
+  private async getConversationPayload(businessId: string, customerId: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: customerId, businessId },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        source: true,
+      },
+    });
+
+    const messages = await this.prisma.message.findMany({
+      where: {
+        businessId,
+        customerId,
+      },
+      orderBy: [
+        { sentAt: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      select: {
+        id: true,
+        direction: true,
+        messageType: true,
+        content: true,
+        sentAt: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      customer: customer
+        ? {
+            id: customer.id,
+            name: customer.name?.trim() || null,
+            phone: customer.phone,
+            source: customer.source ?? 'whatsapp',
+            isDebug: customer.source === 'debug',
+          }
+        : null,
+      messages: messages.map((message) => ({
+        id: message.id,
+        direction: message.direction,
+        messageType: message.messageType,
+        content: message.content?.trim() || '[Mensaje sin texto]',
+        sentAt: (message.sentAt ?? message.createdAt).toISOString(),
+      })),
+    };
   }
 }

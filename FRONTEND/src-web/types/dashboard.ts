@@ -7,7 +7,8 @@ export type ViewId =
   | "appointments"
   | "catalog"
   | "history"
-  | "settings";
+  | "settings"
+  | "debug";
 
 export type NavItem = {
   id: ViewId;

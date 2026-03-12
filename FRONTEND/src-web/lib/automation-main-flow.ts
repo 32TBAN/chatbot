@@ -9,6 +9,7 @@ export type QuickAutomationView = {
   enabled: boolean;
   nodeId: string | null;
   message: string;
+  triggers: string[];
 };
 
 export type MenuOptionView = {
@@ -118,6 +119,7 @@ export function updateAutomationMainFlow(token: string, flow: AutomationMainFlow
         key: item.key,
         enabled: item.enabled,
         message: item.message,
+        triggers: item.triggers,
       })),
       menu: {
         message: flow.menu.message,

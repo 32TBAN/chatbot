@@ -1,4 +1,4 @@
-﻿import { Controller, Get, Injectable, Module, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Injectable, Module, Param, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import {
@@ -26,6 +26,7 @@ class MessageInboxService {
             id: true,
             name: true,
             phone: true,
+            source: true,
           },
         },
       },
@@ -50,10 +51,13 @@ class MessageInboxService {
       .map(([customerId, items]) => {
         const latest = items[0];
         const customer = latest.customer;
+        const source = customer?.source ?? 'whatsapp';
         return {
           customerId,
           customerName: customer?.name?.trim() || null,
           phone: customer?.phone ?? 'Sin telefono',
+          source,
+          isDebug: source === 'debug',
           lastDirection: latest.direction,
           lastMessage: latest.content?.trim() || '[Mensaje sin texto]',
           lastMessageAt: (latest.sentAt ?? latest.createdAt).toISOString(),
@@ -71,6 +75,7 @@ class MessageInboxService {
         id: true,
         name: true,
         phone: true,
+        source: true,
       },
     });
 
@@ -105,6 +110,8 @@ class MessageInboxService {
         id: customer.id,
         name: customer.name?.trim() || null,
         phone: customer.phone,
+        source: customer.source ?? 'whatsapp',
+        isDebug: customer.source === 'debug',
       },
       messages: messages.map((message) => ({
         id: message.id,

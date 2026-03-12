@@ -1,9 +1,9 @@
-﻿import { apiRequest } from '@/lib/api';
-
 export type InboxConversation = {
   customerId: string;
   customerName: string | null;
   phone: string;
+  source: string;
+  isDebug: boolean;
   lastDirection: 'inbound' | 'outbound';
   lastMessage: string;
   lastMessageAt: string;
@@ -23,9 +23,13 @@ export type InboxConversationDetail = {
     id: string;
     name: string | null;
     phone: string;
+    source: string;
+    isDebug: boolean;
   } | null;
   messages: InboxMessage[];
 };
+
+import { apiRequest } from '@/lib/api';
 
 type InboxResult<T> =
   | { ok: true; data: T }

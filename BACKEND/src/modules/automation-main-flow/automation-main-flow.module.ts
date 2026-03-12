@@ -48,6 +48,7 @@ type ExistingNode = FlowWithGraph['flowNodes'][number];
 const MAIN_FLOW_NAME = 'main_whatsapp_automation';
 const KEYWORD_ROUTER_TITLE = '__keyword_router__';
 const KEYWORD_NODE_PREFIX = '__keyword__';
+const MENU_TRIGGER_NODE_TITLE = '__menu_triggers__';
 
 const QUICK_AUTOMATIONS: Array<{
   key: AutomationKey;
@@ -56,15 +57,17 @@ const QUICK_AUTOMATIONS: Array<{
   nodeType: FlowNodeType;
   defaultNodeTitle: string;
   defaultMessage: string;
+  defaultTriggers: string[];
   sortOrder: number;
 }> = [
   {
     key: 'welcome',
     title: 'Mensaje de bienvenida',
-    description: 'Cuando un cliente escribe por primera vez.',
+    description: 'Cuando el cliente saluda o inicia la conversacion.',
     nodeType: FlowNodeType.welcome,
     defaultNodeTitle: 'Bienvenida',
-    defaultMessage: 'Bienvenido a nuestro negocio. Estamos listos para ayudarte.',
+    defaultMessage: 'Hola 👋 Bienvenido a nuestro negocio. Estoy aqui para ayudarte en lo que necesites.',
+    defaultTriggers: ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'buenas'],
     sortOrder: 10,
   },
   {
@@ -73,7 +76,8 @@ const QUICK_AUTOMATIONS: Array<{
     description: 'Ofrece opciones como citas, productos o soporte.',
     nodeType: FlowNodeType.menu,
     defaultNodeTitle: 'Menu principal',
-    defaultMessage: 'Elige una opcion para continuar.',
+    defaultMessage: '✨ Elige una opcion para continuar.',
+    defaultTriggers: ['menu', 'opciones', 'informacion', 'que ofrecen'],
     sortOrder: 20,
   },
   {
@@ -82,7 +86,8 @@ const QUICK_AUTOMATIONS: Array<{
     description: 'Permite que el cliente agende una cita automaticamente.',
     nodeType: FlowNodeType.appointments,
     defaultNodeTitle: 'Reserva de citas',
-    defaultMessage: 'Comparte el dia y la hora que prefieres para reservar tu cita.',
+    defaultMessage: '📅 Claro, puedo ayudarte con tu reserva. Comparte el dia y la hora que prefieres.',
+    defaultTriggers: ['reserva', 'reservar', 'cita', 'agendar', 'agenda'],
     sortOrder: 30,
   },
   {
@@ -91,7 +96,8 @@ const QUICK_AUTOMATIONS: Array<{
     description: 'Permite que el cliente consulte productos disponibles.',
     nodeType: FlowNodeType.products,
     defaultNodeTitle: 'Catalogo de productos',
-    defaultMessage: 'Estos son los productos o servicios disponibles ahora mismo.',
+    defaultMessage: '🛍️ Te comparto la informacion de productos y servicios disponibles ahora mismo.',
+    defaultTriggers: ['producto', 'productos', 'catalogo', 'precio', 'precios', 'stock'],
     sortOrder: 40,
   },
   {
@@ -100,7 +106,8 @@ const QUICK_AUTOMATIONS: Array<{
     description: 'Escala la conversacion a un agente.',
     nodeType: FlowNodeType.support,
     defaultNodeTitle: 'Soporte humano',
-    defaultMessage: 'Te conectaremos con una persona del equipo para ayudarte.',
+    defaultMessage: '🛠️ Vamos a ayudarte con eso. Cuentame un poco mas del problema o consulta.',
+    defaultTriggers: ['soporte', 'ayuda', 'problema', 'error', 'falla'],
     sortOrder: 50,
   },
 ];
@@ -121,6 +128,11 @@ class QuickAutomationInputDto {
   @IsString()
   @MaxLength(2000)
   message!: string;
+
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  triggers!: string[];
 }
 
 class MenuOptionInputDto {
@@ -246,11 +258,48 @@ class AutomationMainFlowService {
             });
 
         standardNodes.set(config.key, node);
+
+        if (config.key !== 'menu') {
+          await tx.flowOption.deleteMany({ where: { flowNodeId: node.id } });
+          const triggers = (payload?.triggers ?? config.defaultTriggers)
+            .map((trigger) => trigger.trim())
+            .filter(Boolean);
+
+          if (triggers.length > 0) {
+            await tx.flowOption.createMany({
+              data: triggers.map((trigger, index) => ({
+                flowNodeId: node.id,
+                optionLabel: trigger,
+                optionValue: trigger,
+                sortOrder: index + 1,
+              })),
+            });
+          }
+        }
       }
 
       const menuNode = standardNodes.get('menu');
       if (!menuNode) {
         throw new BadRequestException('Menu node unavailable');
+      }
+
+      const menuTriggerNode = await this.ensureMenuTriggerNode(tx, ensuredFlowId, existingNodes);
+      await tx.flowOption.deleteMany({ where: { flowNodeId: menuTriggerNode.id } });
+
+      const menuPayload = dto.quickAutomations.find((item) => item.key === 'menu');
+      const menuTriggers = (menuPayload?.triggers ?? QUICK_AUTOMATIONS.find((item) => item.key === 'menu')?.defaultTriggers ?? [])
+        .map((trigger) => trigger.trim())
+        .filter(Boolean);
+
+      if (menuTriggers.length > 0) {
+        await tx.flowOption.createMany({
+          data: menuTriggers.map((trigger, index) => ({
+            flowNodeId: menuTriggerNode.id,
+            optionLabel: trigger,
+            optionValue: trigger,
+            sortOrder: index + 1,
+          })),
+        });
       }
 
       await tx.flowOption.deleteMany({ where: { flowNodeId: menuNode.id } });
@@ -352,6 +401,20 @@ class AutomationMainFlowService {
       }
     }
 
+    for (const automation of dto.quickAutomations) {
+      const seenTriggers = new Set<string>();
+      for (const trigger of automation.triggers ?? []) {
+        const normalized = trigger.trim().toLowerCase();
+        if (!normalized) {
+          throw new BadRequestException(`Trigger vacio en ${automation.key}`);
+        }
+        if (seenTriggers.has(normalized)) {
+          throw new BadRequestException(`Trigger duplicado en ${automation.key}: ${normalized}`);
+        }
+        seenTriggers.add(normalized);
+      }
+    }
+
     const keywordSet = new Set<string>();
     for (const keyword of dto.keywords) {
       const normalized = keyword.keyword.trim().toLowerCase();
@@ -417,6 +480,39 @@ class AutomationMainFlowService {
     });
   }
 
+  private async ensureMenuTriggerNode(
+    tx: Prisma.TransactionClient,
+    flowId: string,
+    existingNodes: ExistingNode[],
+  ) {
+    const existingNode = existingNodes.find(
+      (node) => node.nodeType === FlowNodeType.text_response && node.title === MENU_TRIGGER_NODE_TITLE,
+    );
+
+    if (existingNode) {
+      return tx.flowNode.update({
+        where: { id: existingNode.id },
+        data: {
+          title: MENU_TRIGGER_NODE_TITLE,
+          content: null,
+          isActive: true,
+          sortOrder: 19,
+        },
+      });
+    }
+
+    return tx.flowNode.create({
+      data: {
+        flowId,
+        nodeType: FlowNodeType.text_response,
+        title: MENU_TRIGGER_NODE_TITLE,
+        content: null,
+        isActive: true,
+        sortOrder: 19,
+      },
+    });
+  }
+
   private async ensureKeywordRouterNode(
     tx: Prisma.TransactionClient,
     flowId: string,
@@ -453,6 +549,9 @@ class AutomationMainFlowService {
     }
 
     const menuNode = standardNodes.get('menu');
+    const menuTriggerNode = flow?.flowNodes?.find(
+      (node) => node.nodeType === FlowNodeType.text_response && node.title === MENU_TRIGGER_NODE_TITLE,
+    );
     const keywordRouter = flow?.flowNodes?.find(
       (node) => node.nodeType === FlowNodeType.fallback && node.title === KEYWORD_ROUTER_TITLE,
     );
@@ -481,12 +580,16 @@ class AutomationMainFlowService {
         enabled: standardNodes.get(config.key)?.isActive ?? (config.key === 'welcome' || config.key === 'menu'),
         nodeId: standardNodes.get(config.key)?.id ?? null,
         message: standardNodes.get(config.key)?.content ?? config.defaultMessage,
+        triggers:
+          config.key === 'menu'
+            ? menuTriggerNode?.options?.map((option) => option.optionValue) ?? config.defaultTriggers
+            : standardNodes.get(config.key)?.options?.map((option) => option.optionValue) ?? config.defaultTriggers,
       })),
       menu: {
         message:
           menuNode?.content ??
           QUICK_AUTOMATIONS.find((item) => item.key === 'menu')?.defaultMessage ??
-          'Elige una opcion para continuar.',
+          '✨ Elige una opcion para continuar.',
         options: menuOptions,
       },
       keywords:

@@ -1,9 +1,6 @@
-﻿import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
-  FlowNodeType,
-  MessageDirection,
   MessageType,
-  Prisma,
   WhatsappSession,
   WhatsappSessionStatus,
 } from '@prisma/client';
@@ -17,6 +14,7 @@ import {
   WhatsappClient,
   WhatsappMessage,
 } from './whatsapp-sessions.types';
+import { WhatsappAutomationService } from './whatsapp-automation.service';
 
 const whatsappWebModule = require('whatsapp-web.js') as {
   Client: ClientFactory;
@@ -26,28 +24,7 @@ const qrCodeModule = require('qrcode') as {
   toDataURL: (value: string) => Promise<string>;
 };
 
-const MAIN_FLOW_NAME = 'main_whatsapp_automation';
-const KEYWORD_ROUTER_TITLE = '__keyword_router__';
-
-type FlowGraph = Prisma.FlowGetPayload<{
-  include: {
-    flowNodes: {
-      include: {
-        options: {
-          include: {
-            nextNode: true;
-          };
-          orderBy: {
-            sortOrder: 'asc';
-          };
-        };
-      };
-      orderBy: {
-        sortOrder: 'asc';
-      };
-    };
-  };
-}>;
+const DEBUG_CHAT_SUFFIX = '@debug.local';
 
 @Injectable()
 export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
@@ -56,7 +33,10 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
   private readonly activationLocks = new Map<string, Promise<void>>();
   private readonly sessionsRoot = path.join(process.cwd(), '.wa-sessions');
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly automation: WhatsappAutomationService,
+  ) {}
 
   async onModuleInit() {
     await fs.mkdir(this.sessionsRoot, { recursive: true });
@@ -165,6 +145,24 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
         status: WhatsappSessionStatus.disconnected,
         lastSeenAt: new Date(),
       },
+    });
+  }
+
+  async simulateInboundDebug(session: WhatsappSession, content: string) {
+    if (session.status !== WhatsappSessionStatus.connected || !this.isRuntimeActive(session.businessId)) {
+      throw new BadRequestException('La sesion de WhatsApp debe estar conectada para ejecutar pruebas.');
+    }
+
+    const phone = this.resolveDebugPhone(session.phoneNumber);
+    return this.automation.processInboundMessage({
+      businessId: session.businessId,
+      sessionId: session.id,
+      phone,
+      inboundContent: content.trim(),
+      messageType: MessageType.text,
+      customerName: 'Prueba Debug WhatsApp',
+      customerSource: 'debug',
+      sentAt: new Date(),
     });
   }
 
@@ -297,205 +295,45 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
 
     const chatId = message.from ?? null;
-    const phone = this.normalizePhone(chatId);
+    const phone = this.automation.normalizePhone(chatId);
     if (!chatId || !phone) {
       return;
     }
 
     const externalMessageId = message.id?._serialized ?? null;
     if (externalMessageId) {
-      const existingMessage = await this.prisma.message.findFirst({
-        where: {
-          businessId: session.businessId,
-          externalMessageId,
-        },
-        select: { id: true },
-      });
-
+      const existingMessage = await this.automation.findMessageByExternalId(session.businessId, externalMessageId);
       if (existingMessage) {
         return;
       }
     }
 
-    const customer = await this.ensureCustomer(session.businessId, phone);
-    const sentAt = this.resolveSentAt(message.timestamp);
-    const inboundContent = message.body?.trim() || null;
+    await this.automation.processInboundMessage({
+      businessId: session.businessId,
+      sessionId: session.id,
+      phone,
+      inboundContent: message.body?.trim() || null,
+      messageType: this.mapMessageType(message.type, message.hasMedia),
+      externalMessageId,
+      sentAt: this.automation.resolveSentAt(message.timestamp),
+      dispatchReply: async (content) => {
+        if (!client.sendMessage) {
+          return false;
+        }
 
-    await this.prisma.message.create({
-      data: {
-        businessId: session.businessId,
-        customerId: customer.id,
-        whatsappSessionId: session.id,
-        direction: MessageDirection.inbound,
-        messageType: this.mapMessageType(message.type, message.hasMedia),
-        content: inboundContent,
-        externalMessageId,
-        sentAt,
+        try {
+          await client.sendMessage(chatId, content);
+          return true;
+        } catch (error) {
+          this.logger.warn(
+            `Failed to send automated reply for business ${session.businessId}: ${error instanceof Error ? error.message : 'unknown error'}`,
+          );
+          return false;
+        }
       },
     });
 
     await this.markAlive(session, token);
-
-    const replies = await this.resolveBotReplies(session.businessId, inboundContent);
-    if (!replies.length || !client.sendMessage) {
-      return;
-    }
-
-    for (const reply of replies) {
-      const content = reply.trim();
-      if (!content) {
-        continue;
-      }
-
-      try {
-        await client.sendMessage(chatId, content);
-      } catch (error) {
-        this.logger.warn(
-          `Failed to send automated reply for business ${session.businessId}: ${error instanceof Error ? error.message : 'unknown error'}`,
-        );
-        continue;
-      }
-
-      await this.prisma.message.create({
-        data: {
-          businessId: session.businessId,
-          customerId: customer.id,
-          whatsappSessionId: session.id,
-          direction: MessageDirection.outbound,
-          messageType: MessageType.text,
-          content,
-          sentAt: new Date(),
-        },
-      });
-    }
-  }
-
-  private async resolveBotReplies(businessId: string, inboundContent: string | null) {
-    const normalized = inboundContent?.trim().toLowerCase() ?? '';
-    if (!normalized) {
-      return [] as string[];
-    }
-
-    const flow = await this.findMainFlow(businessId);
-    if (!flow?.isActive) {
-      return [] as string[];
-    }
-
-    const welcomeNode = flow.flowNodes.find((item) => item.nodeType === FlowNodeType.welcome && item.isActive) ?? null;
-    const menuNode = flow.flowNodes.find((item) => item.nodeType === FlowNodeType.menu && item.isActive) ?? null;
-    const fallbackNode = flow.flowNodes.find((item) => item.nodeType === FlowNodeType.fallback && item.isActive) ?? null;
-    const keywordRouter = flow.flowNodes.find((item) => item.title === KEYWORD_ROUTER_TITLE && item.isActive) ?? null;
-
-    if (normalized === 'hola' || normalized === 'menu') {
-      const responses: string[] = [];
-      if (welcomeNode?.content?.trim()) {
-        responses.push(welcomeNode.content.trim());
-      }
-      if (menuNode) {
-        responses.push(this.formatMenuMessage(menuNode));
-      }
-      return responses;
-    }
-
-    const selectedOption = this.findMenuOption(menuNode, normalized);
-    if (selectedOption?.nextNode?.isActive && selectedOption.nextNode.content?.trim()) {
-      return [selectedOption.nextNode.content.trim()];
-    }
-
-    const keywordOption = keywordRouter?.options.find(
-      (item) => item.optionValue.trim().toLowerCase() === normalized && item.nextNode?.isActive,
-    );
-    if (keywordOption?.nextNode?.content?.trim()) {
-      return [keywordOption.nextNode.content.trim()];
-    }
-
-    if (fallbackNode?.content?.trim()) {
-      return [fallbackNode.content.trim()];
-    }
-
-    if (menuNode) {
-      return [`No entendi tu mensaje.\n\n${this.formatMenuMessage(menuNode)}`];
-    }
-
-    return [] as string[];
-  }
-
-  private async findMainFlow(businessId: string) {
-    return this.prisma.flow.findFirst({
-      where: { businessId, name: MAIN_FLOW_NAME },
-      include: {
-        flowNodes: {
-          include: {
-            options: {
-              include: {
-                nextNode: true,
-              },
-              orderBy: {
-                sortOrder: 'asc',
-              },
-            },
-          },
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
-      },
-    }) as Promise<FlowGraph | null>;
-  }
-
-  private findMenuOption(flowNode: FlowGraph['flowNodes'][number] | null, normalizedInput: string) {
-    if (!flowNode) {
-      return null;
-    }
-
-    const numericChoice = Number.parseInt(normalizedInput, 10);
-    if (!Number.isNaN(numericChoice)) {
-      return flowNode.options[numericChoice - 1] ?? null;
-    }
-
-    return (
-      flowNode.options.find(
-        (option) => option.optionLabel.trim().toLowerCase() === normalizedInput || option.optionValue.trim().toLowerCase() === normalizedInput,
-      ) ?? null
-    );
-  }
-
-  private formatMenuMessage(menuNode: FlowGraph['flowNodes'][number]) {
-    const lines = menuNode.options.map((option, index) => `${index + 1}. ${option.optionLabel}`);
-    const intro = menuNode.content?.trim() || 'Elige una opcion para continuar.';
-    return lines.length ? `${intro}\n\n${lines.join('\n')}` : intro;
-  }
-
-  private async ensureCustomer(businessId: string, phone: string) {
-    const existingCustomer = await this.prisma.customer.findFirst({
-      where: {
-        businessId,
-        phone,
-      },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-      },
-    });
-
-    if (existingCustomer) {
-      return existingCustomer;
-    }
-
-    return this.prisma.customer.create({
-      data: {
-        businessId,
-        phone,
-        name: phone,
-        source: 'whatsapp',
-      },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-      },
-    });
   }
 
   private mapMessageType(rawType?: string, hasMedia?: boolean) {
@@ -507,23 +345,6 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     if (rawType === 'chat' || rawType === 'text') return MessageType.text;
     if (hasMedia) return MessageType.document;
     return MessageType.text;
-  }
-
-  private normalizePhone(chatId: string | null) {
-    if (!chatId) {
-      return null;
-    }
-
-    const numeric = chatId.split('@')[0]?.replace(/\D+/g, '') ?? '';
-    return numeric ? `+${numeric}` : null;
-  }
-
-  private resolveSentAt(timestamp?: number) {
-    if (!timestamp) {
-      return new Date();
-    }
-
-    return new Date(timestamp * 1000);
   }
 
   private async handleDisconnected(
@@ -557,6 +378,12 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
   private async removeStoredCredentials(sessionKey: string) {
     const sessionPath = this.getSessionDirectory(sessionKey);
     await fs.rm(sessionPath, { force: true, recursive: true });
+  }
+
+  private resolveDebugPhone(phoneNumber: string | null) {
+    const sanitized = phoneNumber?.replace(/\D+/g, '') || '593000000000';
+    const suffix = sanitized.slice(-8).padStart(8, '0');
+    return `+999${suffix}`;
   }
 
   private async safeDestroy(client: WhatsappClient) {

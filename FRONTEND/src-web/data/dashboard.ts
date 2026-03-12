@@ -1,6 +1,7 @@
 import {
   Activity,
   Bot,
+  Bug,
   CalendarClock,
   MessageSquareShare,
   PackageSearch,
@@ -32,6 +33,12 @@ export const navItems: readonly NavItem[] = [
     label: "Configuracion",
     shortLabel: "Config",
     icon: ShieldCheck,
+  },
+  {
+    id: "debug",
+    label: "Debug",
+    shortLabel: "Debug",
+    icon: Bug,
   },
 ] as const;
 
@@ -198,6 +205,12 @@ export const pageTitles = {
     title: "Reglas del negocio y parametros generales",
     description:
       "Define horarios, mensajes base y responsables sin convertir el panel en un formulario eterno.",
+  },
+  debug: {
+    eyebrow: "Pruebas controladas",
+    title: "Debug de mensajes y respuestas del bot",
+    description:
+      "Simula un inbound desde el panel para validar la respuesta automatica antes de usar el canal real.",
   },
 };
 

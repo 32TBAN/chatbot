@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { createBusiness } from "@/services/business-service";
+import { createBusiness, getMyBusiness, updateBusiness } from "@/services/business-service";
 import { useAuth } from "@/contexts/auth-context";
 import type { AuthUser } from "@/types/auth";
+import type { BusinessProfile } from "@/lib/business";
 
 const INDUSTRY_OPTIONS = [
   { value: "salud", label: "Salud" },
@@ -18,6 +19,8 @@ const INDUSTRY_OPTIONS = [
   { value: "otro", label: "Otro" },
 ] as const;
 
+const KNOWN_INDUSTRIES = new Set<string>(INDUSTRY_OPTIONS.map((option) => option.value).filter((value) => value !== "otro"));
+
 function normalizeSlug(value: string) {
   return value
     .toLowerCase()
@@ -28,6 +31,36 @@ function normalizeSlug(value: string) {
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function mapIndustry(industry?: string) {
+  const value = industry?.trim().toLowerCase();
+  if (!value) {
+    return { industry: "", customIndustry: "" };
+  }
+
+  if (KNOWN_INDUSTRIES.has(value)) {
+    return { industry: value, customIndustry: "" };
+  }
+
+  return { industry: "otro", customIndustry: industry?.trim() ?? "" };
+}
+
+function hydrateFormFromBusiness(business: BusinessProfile) {
+  const mappedIndustry = mapIndustry(business.industry);
+
+  return {
+    name: business.name,
+    email: business.email ?? "",
+    description: business.description ?? "",
+    address: business.address ?? "",
+    slug: business.slug,
+    timezone: business.timezone ?? "",
+    showPhoneField: Boolean(business.phone),
+    phone: business.phone ?? "",
+    industry: mappedIndustry.industry,
+    customIndustry: mappedIndustry.customIndustry,
+  };
 }
 
 export function SettingsSection({
@@ -54,14 +87,17 @@ export function SettingsSection({
   const [customIndustry, setCustomIndustry] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingBusiness, setIsLoadingBusiness] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const formRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (detectedTimezone) {
-      setTimezone(detectedTimezone);
-    }
+    if (!detectedTimezone) return;
+
+    setTimezone((current) => current || detectedTimezone);
   }, []);
 
   useEffect(() => {
@@ -73,8 +109,64 @@ export function SettingsSection({
     });
   }, [focusFormSignal]);
 
+  useEffect(() => {
+    const businessId = sessionUser.businessId;
+    const token = getAccessToken();
+
+    if (!businessId) {
+      setLoadError(null);
+      setIsLoadingBusiness(false);
+      return;
+    }
+
+    if (!token) {
+      setLoadError("No hay una sesion valida para cargar el negocio.");
+      setIsLoadingBusiness(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadBusiness = async () => {
+      setIsLoadingBusiness(true);
+      setLoadError(null);
+      setFormError(null);
+      setFormSuccess(null);
+
+      const result = await getMyBusiness(token);
+      if (cancelled) return;
+
+      setIsLoadingBusiness(false);
+
+      if (!result.ok) {
+        setLoadError(result.message);
+        return;
+      }
+
+      const hydrated = hydrateFormFromBusiness(result.business);
+      setBusinessName(hydrated.name);
+      setBusinessEmail(hydrated.email || sessionUser.email);
+      setBusinessDescription(hydrated.description);
+      setBusinessAddress(hydrated.address);
+      setBusinessSlug(hydrated.slug);
+      setTimezone(hydrated.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "");
+      setShowPhoneField(hydrated.showPhoneField);
+      setBusinessPhone(hydrated.phone);
+      setIndustry(hydrated.industry);
+      setCustomIndustry(hydrated.customIndustry);
+    };
+
+    void loadBusiness();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getAccessToken, loadAttempt, sessionUser.businessId, sessionUser.email]);
+
   const slugValue = useMemo(() => normalizeSlug(businessSlug), [businessSlug]);
   const finalIndustry = industry === "otro" ? customIndustry.trim() : industry;
+  const isEditing = Boolean(sessionUser.businessId);
+  const isBusy = isSaving || isLoadingBusiness;
 
   const handleSubmit = async () => {
     setFormError(null);
@@ -107,12 +199,15 @@ export function SettingsSection({
 
     const token = getAccessToken();
     if (!token) {
-      setFormError("No hay una sesion valida para crear el negocio.");
+      setFormError(
+        isEditing ? "No hay una sesion valida para actualizar el negocio." : "No hay una sesion valida para crear el negocio.",
+      );
       return;
     }
 
     setIsSaving(true);
-    const result = await createBusiness({
+
+    const payload = {
       name: businessName,
       slug: slugValue,
       description: businessDescription,
@@ -122,11 +217,19 @@ export function SettingsSection({
       industry: finalIndustry,
       timezone,
       token,
-    });
+    };
+
+    const result = isEditing && sessionUser.businessId
+      ? await updateBusiness({
+          id: sessionUser.businessId,
+          ...payload,
+        })
+      : await createBusiness(payload);
+
     setIsSaving(false);
 
     if (!result.ok) {
-      if (result.code === "conflict") {
+      if (!isEditing && result.code === "conflict") {
         const refreshed = await refreshSession();
         if (refreshed) {
           onBusinessCreated();
@@ -154,8 +257,24 @@ export function SettingsSection({
       );
     }
 
-    setFormSuccess("Negocio guardado correctamente.");
-    onBusinessCreated();
+    setFormSuccess(isEditing ? "Negocio actualizado correctamente." : "Negocio guardado correctamente.");
+
+    if (!isEditing) {
+      onBusinessCreated();
+      return;
+    }
+
+    const hydrated = hydrateFormFromBusiness(result.business);
+    setBusinessName(hydrated.name);
+    setBusinessEmail(hydrated.email || sessionUser.email);
+    setBusinessDescription(hydrated.description);
+    setBusinessAddress(hydrated.address);
+    setBusinessSlug(hydrated.slug);
+    setTimezone(hydrated.timezone || timezone);
+    setShowPhoneField(hydrated.showPhoneField);
+    setBusinessPhone(hydrated.phone);
+    setIndustry(hydrated.industry);
+    setCustomIndustry(hydrated.customIndustry);
   };
 
   return (
@@ -196,11 +315,25 @@ export function SettingsSection({
         <Card className="bg-card/95" id="business-setup-form" ref={formRef}>
           <CardHeader>
             <CardDescription>Datos del negocio</CardDescription>
-            <CardTitle>Completa la informacion principal</CardTitle>
+            <CardTitle>{isEditing ? "Edita la informacion principal" : "Completa la informacion principal"}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
+            {isLoadingBusiness ? (
+              <p className="text-sm text-muted-foreground">Cargando informacion del negocio...</p>
+            ) : null}
+
+            {loadError ? (
+              <div className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-destructive">{loadError}</p>
+                <Button onClick={() => setLoadAttempt((current) => current + 1)} type="button" variant="outline">
+                  Reintentar
+                </Button>
+              </div>
+            ) : null}
+
             <Field label="Nombre del negocio" icon={Store}>
               <Input
+                disabled={isBusy}
                 onChange={(event) => setBusinessName(event.target.value)}
                 placeholder="Ej. Clinica Norte o Tienda Delta"
                 value={businessName}
@@ -209,6 +342,7 @@ export function SettingsSection({
 
             <Field label="Correo del negocio" icon={Mail}>
               <Input
+                disabled={isBusy}
                 onChange={(event) => setBusinessEmail(event.target.value)}
                 placeholder="negocio@dominio.com"
                 value={businessEmail}
@@ -217,6 +351,7 @@ export function SettingsSection({
 
             <Field label="Slug / pagina web" icon={Globe2}>
               <Input
+                disabled={isBusy}
                 onChange={(event) => setBusinessSlug(event.target.value)}
                 placeholder="mi-negocio"
                 value={businessSlug}
@@ -226,7 +361,8 @@ export function SettingsSection({
 
             <Field label="Industria" icon={Building2}>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-muted/45 px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                className="flex h-10 w-full rounded-md border border-input bg-muted/45 px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
+                disabled={isBusy}
                 onChange={(event) => setIndustry(event.target.value)}
                 value={industry}
               >
@@ -242,6 +378,7 @@ export function SettingsSection({
             {industry === "otro" ? (
               <Field label="Otra industria" icon={Building2}>
                 <Input
+                  disabled={isBusy}
                   onChange={(event) => setCustomIndustry(event.target.value)}
                   placeholder="Escribe la industria"
                   value={customIndustry}
@@ -250,12 +387,13 @@ export function SettingsSection({
             ) : null}
 
             <Field label="Zona horaria" icon={Workflow}>
-              <Input onChange={(event) => setTimezone(event.target.value)} value={timezone} />
+              <Input disabled={isBusy} onChange={(event) => setTimezone(event.target.value)} value={timezone} />
             </Field>
 
             <Field label="Descripcion opcional" icon={Text}>
               <textarea
-                className="min-h-[112px] w-full rounded-md border border-input bg-muted/45 px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                className="min-h-[112px] w-full rounded-md border border-input bg-muted/45 px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
+                disabled={isBusy}
                 onChange={(event) => setBusinessDescription(event.target.value)}
                 placeholder="Describe brevemente el negocio"
                 value={businessDescription}
@@ -264,6 +402,7 @@ export function SettingsSection({
 
             <Field label="Direccion opcional" icon={MapPin}>
               <Input
+                disabled={isBusy}
                 onChange={(event) => setBusinessAddress(event.target.value)}
                 placeholder="Direccion del negocio"
                 value={businessAddress}
@@ -273,6 +412,7 @@ export function SettingsSection({
             {showPhoneField ? (
               <Field label="Telefono comercial opcional" icon={Phone}>
                 <Input
+                  disabled={isBusy}
                   onChange={(event) => setBusinessPhone(event.target.value)}
                   placeholder="+593..."
                   value={businessPhone}
@@ -280,7 +420,8 @@ export function SettingsSection({
               </Field>
             ) : (
               <button
-                className="flex items-center gap-2 text-sm text-panel-ink underline-offset-4 hover:underline"
+                className="flex items-center gap-2 text-sm text-panel-ink underline-offset-4 hover:underline disabled:pointer-events-none disabled:opacity-50"
+                disabled={isBusy}
                 onClick={() => setShowPhoneField(true)}
                 type="button"
               >
@@ -294,10 +435,12 @@ export function SettingsSection({
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
-                Puedes completar mas ajustes despues. Lo importante aqui es dejar creado el negocio.
+                {isEditing
+                  ? "Puedes actualizar estos datos en cualquier momento. Los cambios se guardan sobre el negocio actual."
+                  : "Puedes completar mas ajustes despues. Lo importante aqui es dejar creado el negocio."}
               </p>
-              <Button disabled={isSaving} onClick={handleSubmit} type="button">
-                {isSaving ? "Guardando..." : "Guardar y continuar"}
+              <Button disabled={isBusy || Boolean(loadError)} onClick={handleSubmit} type="button">
+                {isSaving ? (isEditing ? "Guardando cambios..." : "Guardando...") : isEditing ? "Guardar cambios" : "Guardar y continuar"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

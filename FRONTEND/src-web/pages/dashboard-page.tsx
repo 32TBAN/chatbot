@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { pageTitles } from "@/data/dashboard";
-import { AutomationsSection } from "@/components/dashboard/automations-section";
 import { AppointmentsSection } from "@/components/dashboard/appointments-section";
+import { AutomationsSection } from "@/components/dashboard/automations-section";
 import { CatalogSection } from "@/components/dashboard/catalog-section";
+import { DebugSection } from "@/components/dashboard/debug-section";
 import { HistorySection } from "@/components/dashboard/history-section";
 import { OverviewSection } from "@/components/dashboard/overview-section";
 import { QrSection } from "@/components/dashboard/qr-section";
@@ -24,12 +25,18 @@ export function DashboardPage() {
   const [blockedNotice, setBlockedNotice] = useState<string | null>(null);
   const [focusFormSignal, setFocusFormSignal] = useState(0);
   const setupIncomplete = !sessionUser?.businessId || !sessionUser?.business?.name?.trim();
+  const isOwner = sessionUser?.role === "owner";
 
   useEffect(() => {
     if (setupIncomplete && activeView !== "settings") {
       setActiveView("settings");
+      return;
     }
-  }, [activeView, setupIncomplete]);
+
+    if (!setupIncomplete && activeView === "debug" && !isOwner) {
+      setActiveView("overview");
+    }
+  }, [activeView, isOwner, setupIncomplete]);
 
   if (!sessionUser) return null;
 
@@ -37,6 +44,13 @@ export function DashboardPage() {
     if (setupIncomplete && id !== "settings") {
       setActiveView("settings");
       setBlockedNotice(BLOCKED_MESSAGE);
+      setMenuOpen(false);
+      return;
+    }
+
+    if (id === "debug" && !isOwner) {
+      setActiveView("overview");
+      setBlockedNotice("Solo el owner del negocio puede usar Debug.");
       setMenuOpen(false);
       return;
     }
@@ -72,6 +86,7 @@ export function DashboardPage() {
           <Sidebar
             activeView={activeView}
             onNavigate={handleNavigate}
+            sessionUser={sessionUser}
             setupIncomplete={setupIncomplete}
           />
         </aside>
@@ -148,6 +163,7 @@ export function DashboardPage() {
                   setupIncomplete={setupIncomplete}
                 />
               ) : null}
+              {activeView === "debug" ? <DebugSection isOwner={isOwner} /> : null}
             </div>
           </div>
         </main>

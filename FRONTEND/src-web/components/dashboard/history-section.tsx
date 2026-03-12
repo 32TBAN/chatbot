@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bot, LoaderCircle, MessageSquareText, RefreshCw, Smartphone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -141,7 +141,7 @@ export function HistorySection() {
           <div className="flex items-center justify-between border-b border-border/80 px-5 py-4">
             <div>
               <p className="font-display text-lg uppercase tracking-[0.08em] text-panel-ink">Conversaciones</p>
-              <p className="text-sm text-muted-foreground">Mensajes reales recibidos desde WhatsApp.</p>
+              <p className="text-sm text-muted-foreground">Mensajes reales recibidos desde WhatsApp y pruebas de debug.</p>
             </div>
             <Button disabled={!conversations.length} onClick={() => void refreshInbox()} size="icon" type="button" variant="ghost">
               <RefreshCw className={cn('h-4 w-4', refreshing ? 'animate-spin' : '')} />
@@ -166,12 +166,15 @@ export function HistorySection() {
                     <div>
                       <p className="font-medium">{conversation.customerName || conversation.phone}</p>
                       <p className={cn('text-sm', selectedCustomerId === conversation.customerId ? 'text-panel-ivory/75' : 'text-muted-foreground')}>
-                        {conversation.customerName ? conversation.phone : 'Contacto desde WhatsApp'}
+                        {conversation.isDebug ? 'Conversacion de prueba' : conversation.customerName ? conversation.phone : 'Contacto desde WhatsApp'}
                       </p>
                     </div>
-                    <Badge variant={conversation.lastDirection === 'inbound' ? 'default' : 'success'}>
-                      {conversation.lastDirection === 'inbound' ? 'Cliente' : 'Bot'}
-                    </Badge>
+                    <div className="flex gap-2">
+                      {conversation.isDebug ? <Badge variant="warning">Prueba</Badge> : null}
+                      <Badge variant={conversation.lastDirection === 'inbound' ? 'default' : 'success'}>
+                        {conversation.lastDirection === 'inbound' ? 'Cliente' : 'Bot'}
+                      </Badge>
+                    </div>
                   </div>
                   <p className={cn('mt-3 line-clamp-2 text-sm leading-6', selectedCustomerId === conversation.customerId ? 'text-panel-ivory' : 'text-panel-ink')}>
                     {conversation.lastMessage}
@@ -190,7 +193,7 @@ export function HistorySection() {
               </div>
               <div>
                 <p className="font-medium text-panel-ink">Todavia no hay conversaciones registradas.</p>
-                <p className="mt-2 text-sm">Cuando el negocio reciba mensajes en WhatsApp, apareceran aqui automaticamente.</p>
+                <p className="mt-2 text-sm">Cuando el negocio reciba mensajes o ejecutes debug, apareceran aqui automaticamente.</p>
               </div>
             </div>
           )}
@@ -219,7 +222,10 @@ export function HistorySection() {
                     <p className="text-sm text-muted-foreground">{selectedConversation.customer.phone}</p>
                   </div>
                 </div>
-                <Badge variant="success">Solo lectura</Badge>
+                <div className="flex gap-2">
+                  {selectedConversation.customer?.isDebug ? <Badge variant="warning">Prueba</Badge> : null}
+                  <Badge variant="success">Solo lectura</Badge>
+                </div>
               </div>
 
               <div className="grid gap-3 bg-[linear-gradient(180deg,rgba(243,247,242,0.92),rgba(253,251,245,0.96))] p-5">
@@ -227,7 +233,11 @@ export function HistorySection() {
                   <div className={cn('flex', message.direction === 'outbound' ? 'justify-end' : 'justify-start')} key={message.id}>
                     <div className={cn('max-w-[82%] rounded-[1.4rem] px-4 py-3 text-sm leading-6 shadow-sm', message.direction === 'outbound' ? 'bg-panel-ink text-panel-ivory' : 'border border-border/80 bg-background/92 text-panel-ink')}>
                       <p className={cn('text-[11px] uppercase tracking-[0.24em]', message.direction === 'outbound' ? 'text-panel-ivory/70' : 'text-muted-foreground')}>
-                        {message.direction === 'outbound' ? 'Bot' : 'Cliente'}
+                        {message.direction === 'outbound'
+                          ? 'Bot'
+                          : selectedConversation.customer?.isDebug
+                            ? 'Debug inbound'
+                            : 'Cliente'}
                       </p>
                       <p className="mt-1 whitespace-pre-wrap">{message.content}</p>
                       <p className={cn('mt-2 text-[11px]', message.direction === 'outbound' ? 'text-panel-ivory/70' : 'text-muted-foreground')}>
@@ -249,7 +259,7 @@ export function HistorySection() {
                   <Bot className="h-6 w-6" />
                 </div>
                 <p className="font-medium text-panel-ink">Selecciona una conversacion para ver el detalle.</p>
-                <p className="text-sm">Aqui aparecera el historial completo entre el cliente y el bot de WhatsApp.</p>
+                <p className="text-sm">Aqui aparecera el historial completo entre el cliente, el bot y las pruebas de debug.</p>
               </div>
             </div>
           )}

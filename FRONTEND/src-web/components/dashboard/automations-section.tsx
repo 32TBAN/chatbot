@@ -1,4 +1,4 @@
-﻿import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -73,6 +73,14 @@ const quickActionDetails: Record<AutomationKey, string> = {
   support: "Escala la conversacion a un agente.",
 };
 
+const defaultTriggers: Record<AutomationKey, string[]> = {
+  welcome: ["hola", "buenos dias", "buenas tardes", "buenas noches", "buenas"],
+  menu: ["menu", "opciones", "informacion", "que ofrecen"],
+  appointments: ["reserva", "reservar", "cita", "agendar", "agenda"],
+  products: ["producto", "productos", "catalogo", "precio", "precios", "stock"],
+  support: ["soporte", "ayuda", "problema", "error", "falla"],
+};
+
 const emptyFlow: AutomationMainFlowView = {
   flowId: null,
   flowName: "Bot principal de WhatsApp",
@@ -83,7 +91,17 @@ const emptyFlow: AutomationMainFlowView = {
     description: quickActionDetails[key],
     enabled: key === "welcome" || key === "menu",
     nodeId: null,
-    message: "",
+    message:
+      key === "welcome"
+        ? "Hola! Bienvenido a nuestro negocio. Estoy aqui para ayudarte en lo que necesites."
+        : key === "menu"
+          ? "Elige una opcion para continuar."
+          : key === "appointments"
+            ? "Claro, puedo ayudarte con tu reserva. Comparte el dia y la hora que prefieres."
+            : key === "products"
+              ? "Te comparto la informacion de productos y servicios disponibles ahora mismo."
+              : "Vamos a ayudarte con eso. Cuentame un poco mas del problema o consulta.",
+    triggers: [...defaultTriggers[key]],
   })),
   menu: {
     message: "Elige una opcion para continuar.",
@@ -105,7 +123,7 @@ const emptyFlow: AutomationMainFlowView = {
 function cloneFlow(flow: AutomationMainFlowView): AutomationMainFlowView {
   return {
     ...flow,
-    quickAutomations: flow.quickAutomations.map((item) => ({ ...item })),
+    quickAutomations: flow.quickAutomations.map((item) => ({ ...item, triggers: [...(item.triggers ?? defaultTriggers[item.key])] })), 
     menu: {
       ...flow.menu,
       options: flow.menu.options.map((item) => ({ ...item })),
@@ -118,6 +136,10 @@ function cloneFlow(flow: AutomationMainFlowView): AutomationMainFlowView {
 function normalizeFlow(flow: AutomationMainFlowView) {
   return JSON.stringify({
     ...flow,
+    quickAutomations: flow.quickAutomations.map((item) => ({
+      ...item,
+      triggers: (item.triggers ?? []).map((trigger) => trigger.trim().toLowerCase()).filter(Boolean),
+    })),
     menu: {
       ...flow.menu,
       options: flow.menu.options.map((item, index) => ({ ...item, position: index + 1 })),
@@ -131,8 +153,12 @@ function normalizeFlow(flow: AutomationMainFlowView) {
   });
 }
 
-function normalizePreviewValue(value: string) {
-  return value.trim().toLowerCase();
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 }
 export function AutomationsSection() {
   const { getAccessToken } = useAuth();
@@ -180,7 +206,6 @@ export function AutomationsSection() {
 
   const dirty = serverSnapshot ? normalizeFlow(serverSnapshot) !== normalizeFlow(draft) : false;
   const menuTargets = draft.nodeRegistry.filter((item) => item.key !== "welcome" && item.key !== "menu");
-  const previewGreeting = draft.quickAutomations.find((item) => item.key === "welcome")?.message.trim() || "Bienvenido a nuestro negocio";
   const previewMenu = draft.menu.options.filter((item) => item.label.trim());
   const editingAutomation = editingKey ? draft.quickAutomations.find((item) => item.key === editingKey) ?? null : null;
 
@@ -361,7 +386,6 @@ export function AutomationsSection() {
         keywords={draft.keywords}
         menuMessage={draft.menu.message}
         onToggle={() => setIsPreviewCollapsed((current) => !current)}
-        previewGreeting={previewGreeting}
         previewMenu={previewMenu}
         quickAutomations={draft.quickAutomations}
       />
@@ -387,6 +411,15 @@ export function AutomationsSection() {
                 <label className="grid gap-2">
                   <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Mensaje</span>
                   <textarea className="min-h-[220px] rounded-2xl border border-input bg-muted/35 px-4 py-4 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30" onChange={(event) => setQuickAutomation(editingAutomation.key, { message: event.target.value })} placeholder="Escribe la respuesta automatica." value={editingAutomation.message} />
+                </label>
+                <label className="grid gap-2">
+                  <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Disparadores</span>
+                  <Input
+                    onChange={(event) => setQuickAutomation(editingAutomation.key, { triggers: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })}
+                    placeholder={editingAutomation.key === "menu" ? "menu, opciones, informacion, que ofrecen" : "hola, buenos dias, buenas tardes"}
+                    value={(editingAutomation.triggers ?? []).join(", ")}
+                  />
+                  <p className="text-sm text-muted-foreground">Separalos con comas. El bot respondera cuando el mensaje contenga alguno.</p>
                 </label>
                 <div className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-4">
                   <div>
@@ -415,7 +448,6 @@ function FloatingChatPreview({
   keywords,
   menuMessage,
   onToggle,
-  previewGreeting,
   previewMenu,
   quickAutomations,
 }: {
@@ -423,14 +455,14 @@ function FloatingChatPreview({
   keywords: KeywordView[];
   menuMessage: string;
   onToggle: () => void;
-  previewGreeting: string;
   previewMenu: MenuOptionView[];
   quickAutomations: QuickAutomationView[];
 }) {
   const [draftMessage, setDraftMessage] = useState("");
   const [messages, setMessages] = useState<PreviewMessage[]>([]);
   const messagesRef = useRef<HTMLDivElement | null>(null);
-  const fallbackMessage = "No entendi tu mensaje. Prueba una opcion del menu o escribe una palabra clave.";
+  const fallbackMessage = "No pude detectar una intencion clara. Si quieres, escribe menu para ver las opciones disponibles.";
+  const orderedQuickKeys: AutomationKey[] = ["welcome", "menu", "appointments", "products", "support"];
   const keywordRules = keywords.filter((item) => item.keyword.trim());
   const automationMap = new Map(quickAutomations.map((item) => [item.key, item]));
 
@@ -453,44 +485,81 @@ function FloatingChatPreview({
   const resolveAutomationMessage = (targetKey: AutomationKey) => {
     const automation = automationMap.get(targetKey);
     if (!automation?.enabled) {
-      return "Esta automatizacion aun no esta activa.";
+      return null;
     }
 
     return automation.message.trim() || `Respuesta pendiente para ${automation.title.toLowerCase()}.`;
+  };
+
+  const containsTrigger = (value: string, triggers: string[]) => {
+    const normalizedValue = normalizeText(value);
+    return triggers.some((trigger) => normalizedValue.includes(normalizeText(trigger)));
+  };
+
+  const uniquePreviewMessages = (items: Array<Omit<PreviewMessage, "id">>) => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      if (item.role === "user") return true;
+      const normalized = item.text.trim();
+      if (!normalized || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
   };
 
   const submitPreview = (rawValue: string, displayValue = rawValue.trim()) => {
     const value = rawValue.trim();
     if (!value) return;
 
-    const normalized = normalizePreviewValue(value);
-    const numericChoice = Number.parseInt(normalized, 10);
-    const selectedByNumber = Number.isNaN(numericChoice) ? null : previewMenu[numericChoice - 1] ?? null;
-    const selectedByLabel = previewMenu.find((option) => normalizePreviewValue(option.label) === normalized) ?? null;
-    const matchedKeyword = keywordRules.find((item) => normalizePreviewValue(item.keyword) === normalized) ?? null;
+    const normalized = normalizeText(value);
+    const selectedByNumber = /^\d+$/.test(normalized) ? previewMenu[Number.parseInt(normalized, 10) - 1] ?? null : null;
+    const selectedByLabel = previewMenu.find((option) => normalizeText(option.label) === normalized) ?? null;
     const nextMessages: Array<Omit<PreviewMessage, "id">> = [{ role: "user", text: displayValue }];
+    const matchedResponses: Array<Omit<PreviewMessage, "id">> = [];
 
-    if (normalized === "hola" || normalized === "menu") {
-      nextMessages.push(
-        { role: "bot", text: previewGreeting },
-        { role: "bot", text: menuMessage.trim() || "Elige una opcion para continuar.", menuOptions: previewMenu },
-      );
+    if (selectedByNumber || selectedByLabel) {
+      const option = selectedByNumber ?? selectedByLabel;
+      const content = option ? resolveAutomationMessage(option.targetKey) : null;
+      nextMessages.push({ role: "bot", text: content || fallbackMessage });
       appendMessages(nextMessages);
       return;
     }
 
-    if (selectedByNumber || selectedByLabel) {
-      const option = selectedByNumber ?? selectedByLabel;
-      if (option) {
-        nextMessages.push({ role: "bot", text: resolveAutomationMessage(option.targetKey) });
-        appendMessages(nextMessages);
-        return;
+    for (const key of orderedQuickKeys) {
+      const automation = automationMap.get(key);
+      if (!automation?.enabled || !containsTrigger(value, automation.triggers ?? [])) {
+        continue;
+      }
+
+      if (key === "menu") {
+        matchedResponses.push({
+          role: "bot",
+          text: menuMessage.trim() || "Elige una opcion para continuar.",
+          menuOptions: previewMenu,
+        });
+        continue;
+      }
+
+      const content = resolveAutomationMessage(key);
+      if (content) {
+        matchedResponses.push({ role: "bot", text: content });
       }
     }
 
-    if (matchedKeyword) {
-      nextMessages.push({ role: "bot", text: matchedKeyword.response.trim() || "Respuesta pendiente de configurar." });
-      appendMessages(nextMessages);
+    for (const keyword of keywordRules) {
+      if (!normalized.includes(normalizeText(keyword.keyword))) {
+        continue;
+      }
+
+      const response = keyword.response.trim();
+      if (response) {
+        matchedResponses.push({ role: "bot", text: response });
+      }
+    }
+
+    const uniqueResponses = uniquePreviewMessages(matchedResponses);
+    if (uniqueResponses.length > 0) {
+      appendMessages([...nextMessages, ...uniqueResponses]);
       return;
     }
 
@@ -518,7 +587,7 @@ function FloatingChatPreview({
         {!collapsed ? (
           <div className="grid gap-4 p-4">
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-muted/30 px-3 py-2">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Escribe hola, un numero o una palabra clave</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Prueba saludos, reservas, productos, soporte o palabras clave</p>
               <Button onClick={() => setMessages([])} size="sm" type="button" variant="ghost">
                 <RotateCcw className="h-4 w-4" />
                 Reiniciar
@@ -554,7 +623,7 @@ function FloatingChatPreview({
                 )) : (
                   <div className="grid gap-3 rounded-[1.25rem] border border-dashed border-border/80 bg-background/70 px-4 py-5 text-sm text-muted-foreground">
                     <p className="font-medium text-panel-ink">Prueba el flujo antes de guardar.</p>
-                    <p>Escribe <span className="font-medium text-panel-ink">hola</span>, selecciona una opcion del menu o usa una palabra clave como <span className="font-medium text-panel-ink">{keywordRules[0]?.keyword || "horario"}</span>.</p>
+                    <p>Escribe <span className="font-medium text-panel-ink">hola quiero reservar</span>, <span className="font-medium text-panel-ink">precio de productos</span> o una palabra clave como <span className="font-medium text-panel-ink">{keywordRules[0]?.keyword || "horario"}</span>.</p>
                   </div>
                 )}
               </div>
@@ -569,7 +638,7 @@ function FloatingChatPreview({
               >
                 <Input
                   onChange={(event) => setDraftMessage(event.target.value)}
-                  placeholder="Escribe hola, 1 o una palabra clave"
+                  placeholder="Ej. buenas tardes quiero una cita"
                   value={draftMessage}
                 />
                 <Button disabled={!draftMessage.trim()} size="icon" type="submit">
@@ -583,6 +652,7 @@ function FloatingChatPreview({
     </div>
   );
 }
+
 function MenuOptionEditor({ disableDown, disableUp, menuTargets, onChange, onMoveDown, onMoveUp, onRemove, option, position }: { disableDown: boolean; disableUp: boolean; menuTargets: Array<{ key: AutomationKey; label: string; enabled: boolean }>; onChange: (nextOption: MenuOptionView) => void; onMoveDown: () => void; onMoveUp: () => void; onRemove: () => void; option: MenuOptionView; position: number; }) {
   return (
     <div className="grid gap-4 rounded-[1.25rem] border border-border/80 bg-[linear-gradient(180deg,rgba(252,249,241,0.92),rgba(243,245,240,0.86))] p-4 shadow-sm lg:grid-cols-[72px_minmax(0,1.2fr)_minmax(0,1fr)_auto] lg:items-center">
