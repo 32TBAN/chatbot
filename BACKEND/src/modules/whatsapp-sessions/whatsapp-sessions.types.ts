@@ -1,4 +1,26 @@
-﻿import { WhatsappSession, WhatsappSessionStatus } from '@prisma/client';
+import { MessageType, WhatsappSession, WhatsappSessionStatus } from '@prisma/client';
+
+export type OutboundAction =
+  | {
+      type: 'text';
+      content: string;
+    }
+  | {
+      type: 'media';
+      mediaKind: 'image' | 'video' | 'document';
+      mediaPath: string;
+      mediaUrl?: string | null;
+      caption?: string | null;
+    }
+  | {
+      type: 'location';
+      latitude: number;
+      longitude: number;
+      label?: string | null;
+      address?: string | null;
+      url?: string | null;
+      intro?: string | null;
+    };
 
 export type RuntimeHandle = {
   client: WhatsappClient;
@@ -21,7 +43,7 @@ export type WhatsappClient = {
   destroy: () => Promise<void>;
   initialize: () => Promise<void>;
   logout?: () => Promise<void>;
-  sendMessage?: (chatId: string, content: string) => Promise<unknown>;
+  sendMessage?: (chatId: string, content: any, options?: Record<string, unknown>) => Promise<unknown>;
   on: (event: string, listener: (...args: any[]) => void | Promise<void>) => void;
   info?: {
     wid?: {

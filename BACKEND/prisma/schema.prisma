@@ -55,6 +55,7 @@ enum FlowNodeType {
   text_response
   products
   appointments
+  location
   support
   registration
   fallback
@@ -95,6 +96,7 @@ model Business {
   messages         Message[]
   flows            Flow[]
   payments         Payment[]
+  conversationStates CustomerConversationState[]
 
   @@map("businesses")
 }
@@ -120,20 +122,31 @@ model User {
 }
 
 model BusinessSettings {
-  id                  String   @id @default(uuid()) @db.Uuid
-  businessId          String   @unique @map("business_id") @db.Uuid
-  welcomeMessage      String?  @map("welcome_message")
-  fallbackMessage     String?  @map("fallback_message")
-  supportMessage      String?  @map("support_message")
-  askForName          Boolean  @default(true) @map("ask_for_name")
-  askForEmail         Boolean  @default(false) @map("ask_for_email")
-  askForRegistration  Boolean  @default(false) @map("ask_for_registration")
-  appointmentsEnabled Boolean  @default(true) @map("appointments_enabled")
-  productsEnabled     Boolean  @default(true) @map("products_enabled")
-  supportEnabled      Boolean  @default(true) @map("support_enabled")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  business            Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(uuid()) @db.Uuid
+  businessId            String   @unique @map("business_id") @db.Uuid
+  welcomeMessage        String?  @map("welcome_message")
+  fallbackMessage       String?  @map("fallback_message")
+  supportMessage        String?  @map("support_message")
+  askForName            Boolean  @default(true) @map("ask_for_name")
+  askForEmail           Boolean  @default(false) @map("ask_for_email")
+  askForRegistration    Boolean  @default(false) @map("ask_for_registration")
+  appointmentsEnabled   Boolean  @default(true) @map("appointments_enabled")
+  productsEnabled       Boolean  @default(true) @map("products_enabled")
+  supportEnabled        Boolean  @default(true) @map("support_enabled")
+  targetingMode         String   @default("all") @map("targeting_mode") @db.VarChar(20)
+  targetingNumbers      String[] @default([]) @map("targeting_numbers")
+  welcomeLogoUrl        String?  @map("welcome_logo_url")
+  welcomeLogoPath       String?  @map("welcome_logo_path")
+  welcomeLogoFilename   String?  @map("welcome_logo_filename") @db.VarChar(255)
+  welcomeLogoMimeType   String?  @map("welcome_logo_mime_type") @db.VarChar(120)
+  locationLatitude      Decimal? @map("location_latitude") @db.Decimal(10, 7)
+  locationLongitude     Decimal? @map("location_longitude") @db.Decimal(10, 7)
+  locationLabel         String?  @map("location_label") @db.VarChar(160)
+  locationAddress       String?  @map("location_address")
+  locationGoogleMapsUrl String?  @map("location_google_maps_url")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  business              Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@map("business_settings")
 }
@@ -172,6 +185,7 @@ model Customer {
   messages      Message[]
   customerNotes CustomerNote[]
   payments      Payment[]
+  conversation  CustomerConversationState?
 
   @@unique([businessId, phone], map: "uq_customer_phone_per_business")
   @@unique([businessId, email], map: "uq_customer_email_per_business")
@@ -181,20 +195,41 @@ model Customer {
 }
 
 model Product {
-  id          String   @id @default(uuid()) @db.Uuid
-  businessId  String   @map("business_id") @db.Uuid
-  name        String   @db.VarChar(120)
-  description String?
-  price       Decimal? @db.Decimal(10, 2)
-  currency    String?  @default("USD") @db.VarChar(10)
-  stock       Int?     @default(0)
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid()) @db.Uuid
+  businessId      String   @map("business_id") @db.Uuid
+  name            String   @db.VarChar(120)
+  description     String?
+  price           Decimal? @db.Decimal(10, 2)
+  currency        String?  @default("USD") @db.VarChar(10)
+  stock           Int?     @default(0)
+  isActive        Boolean  @default(true) @map("is_active")
+  mediaType       String?  @map("media_type") @db.VarChar(20)
+  mediaUrl        String?  @map("media_url")
+  mediaPath       String?  @map("media_path")
+  mediaFilename   String?  @map("media_filename") @db.VarChar(255)
+  mediaMimeType   String?  @map("media_mime_type") @db.VarChar(120)
+  whatsappCaption String?  @map("whatsapp_caption")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId], map: "idx_products_business_id")
   @@map("products")
+}
+
+model CustomerConversationState {
+  id           String   @id @default(uuid()) @db.Uuid
+  businessId   String   @map("business_id") @db.Uuid
+  customerId   String   @unique @map("customer_id") @db.Uuid
+  currentState String?  @map("current_state") @db.VarChar(80)
+  payload      Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId], map: "idx_customer_conversations_business_id")
+  @@map("customer_conversation_states")
 }
 
 model Appointment {
@@ -318,4 +353,6 @@ model Payment {
   @@index([businessId], map: "idx_payments_business_id")
   @@map("payments")
 }
+
+
 

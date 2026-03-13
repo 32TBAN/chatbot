@@ -7,9 +7,11 @@ import {
 import { promises as fs } from 'fs';
 import path from 'path';
 import { PrismaService } from '../../prisma/prisma.service';
+import { toAbsoluteMediaPath } from '../../common/media-storage';
 import {
   ClientFactory,
   LocalAuthFactory,
+  OutboundAction,
   RuntimeHandle,
   WhatsappClient,
   WhatsappMessage,
@@ -19,6 +21,10 @@ import { WhatsappAutomationService } from './whatsapp-automation.service';
 const whatsappWebModule = require('whatsapp-web.js') as {
   Client: ClientFactory;
   LocalAuth: LocalAuthFactory;
+  MessageMedia: {
+    fromFilePath: (filePath: string) => unknown;
+  };
+  Location: new (latitude: number, longitude: number, options?: Record<string, unknown>) => unknown;
 };
 const qrCodeModule = require('qrcode') as {
   toDataURL: (value: string) => Promise<string>;
@@ -308,6 +314,8 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    const allowAutomatedReply = await this.shouldSendAutomatedReply(session.businessId, phone);
+
     await this.automation.processInboundMessage({
       businessId: session.businessId,
       sessionId: session.id,
@@ -316,13 +324,13 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
       messageType: this.mapMessageType(message.type, message.hasMedia),
       externalMessageId,
       sentAt: this.automation.resolveSentAt(message.timestamp),
-      dispatchReply: async (content) => {
-        if (!client.sendMessage) {
+      dispatchReply: async (action) => {
+        if (!allowAutomatedReply || !client.sendMessage) {
           return false;
         }
 
         try {
-          await client.sendMessage(chatId, content);
+          await this.sendOutboundAction(client, chatId, action);
           return true;
         } catch (error) {
           this.logger.warn(
@@ -334,6 +342,67 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     });
 
     await this.markAlive(session, token);
+  }
+
+  private async sendOutboundAction(client: WhatsappClient, chatId: string, action: OutboundAction) {
+    if (!client.sendMessage) {
+      return;
+    }
+
+    if (action.type === 'text') {
+      await client.sendMessage(chatId, action.content);
+      return;
+    }
+
+    if (action.type === 'media') {
+      const absolutePath = toAbsoluteMediaPath(action.mediaPath);
+      if (!absolutePath) {
+        return;
+      }
+
+      const media = whatsappWebModule.MessageMedia.fromFilePath(absolutePath);
+      await client.sendMessage(chatId, media, {
+        caption: action.caption ?? undefined,
+        ...(action.mediaKind === 'video' ? { sendVideoAsGif: false } : {}),
+      });
+      return;
+    }
+
+    if (action.intro?.trim()) {
+      await client.sendMessage(chatId, action.intro.trim());
+    }
+
+    const location = new whatsappWebModule.Location(action.latitude, action.longitude, {
+      name: action.label ?? undefined,
+      address: action.address ?? undefined,
+      url: action.url ?? undefined,
+    });
+    await client.sendMessage(chatId, location);
+  }
+
+  private async shouldSendAutomatedReply(businessId: string, phone: string) {
+    const settings = await this.prisma.businessSettings.findUnique({
+      where: { businessId },
+      select: {
+        targetingMode: true,
+        targetingNumbers: true,
+      },
+    });
+
+    if (!settings || settings.targetingMode === 'all') {
+      return true;
+    }
+
+    const numbers = new Set((settings.targetingNumbers ?? []).map((value) => value.trim()).filter(Boolean));
+    if (settings.targetingMode === 'exclude') {
+      return !numbers.has(phone);
+    }
+
+    if (settings.targetingMode === 'allow_only') {
+      return numbers.has(phone);
+    }
+
+    return true;
   }
 
   private mapMessageType(rawType?: string, hasMedia?: boolean) {

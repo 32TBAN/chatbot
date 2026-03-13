@@ -1,13 +1,30 @@
-import { ArrowRight, Building2, Globe2, Mail, MapPin, Phone, Store, Text, Workflow, type LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  ArrowRight,
+  Building2,
+  Globe2,
+  ImagePlus,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
+  ShieldBan,
+  Store,
+  Text,
+  Workflow,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getBusinessSettings, updateBusinessSettings, uploadWelcomeLogo } from "@/services/business-settings-service";
 import { createBusiness, getMyBusiness, updateBusiness } from "@/services/business-service";
 import { useAuth } from "@/contexts/auth-context";
-import type { AuthUser } from "@/types/auth";
+import type { BusinessSettingsView, TargetingMode } from "@/lib/business-settings";
 import type { BusinessProfile } from "@/lib/business";
+import type { AuthUser } from "@/types/auth";
 
 const INDUSTRY_OPTIONS = [
   { value: "salud", label: "Salud" },
@@ -18,6 +35,44 @@ const INDUSTRY_OPTIONS = [
   { value: "belleza", label: "Belleza" },
   { value: "otro", label: "Otro" },
 ] as const;
+
+const COUNTRY_OPTIONS = [
+  { code: "EC", label: "Ecuador", dialCode: "+593" },
+  { code: "CO", label: "Colombia", dialCode: "+57" },
+  { code: "PE", label: "Peru", dialCode: "+51" },
+  { code: "MX", label: "Mexico", dialCode: "+52" },
+  { code: "US", label: "Estados Unidos", dialCode: "+1" },
+] as const;
+
+const TARGETING_MODE_OPTIONS: Array<{ description: string; value: TargetingMode; label: string }> = [
+  {
+    value: "all",
+    label: "Sin restriccion",
+    description: "El bot responde a cualquier numero que escriba al WhatsApp del negocio.",
+  },
+  {
+    value: "exclude",
+    label: "Enviar a todos excepto",
+    description: "Bloquea respuestas automaticas para los numeros que agregues a la lista.",
+  },
+  {
+    value: "allow_only",
+    label: "Enviar solo a",
+    description: "Permite respuestas automaticas unicamente a los numeros de la lista.",
+  },
+];
+
+const DEFAULT_SETTINGS: BusinessSettingsView = {
+  targetingMode: "all",
+  targetingNumbers: [],
+  welcomeLogoUrl: null,
+  welcomeLogoFilename: null,
+  locationLatitude: null,
+  locationLongitude: null,
+  locationLabel: null,
+  locationAddress: null,
+  locationGoogleMapsUrl: null,
+};
 
 const KNOWN_INDUSTRIES = new Set<string>(INDUSTRY_OPTIONS.map((option) => option.value).filter((value) => value !== "otro"));
 
@@ -63,6 +118,21 @@ function hydrateFormFromBusiness(business: BusinessProfile) {
   };
 }
 
+function normalizeLocalPhone(value: string) {
+  return value.replace(/\D+/g, "").replace(/^0+/, "");
+}
+
+function buildNormalizedPhone(dialCode: string, rawPhone: string) {
+  const localNumber = normalizeLocalPhone(rawPhone);
+  const normalizedDialCode = dialCode.replace(/\D+/g, "");
+
+  if (!normalizedDialCode || localNumber.length < 6) {
+    return null;
+  }
+
+  return `+${normalizedDialCode}${localNumber}`;
+}
+
 export function SettingsSection({
   focusFormSignal,
   onBusinessCreated,
@@ -85,6 +155,13 @@ export function SettingsSection({
   const [businessPhone, setBusinessPhone] = useState("");
   const [industry, setIndustry] = useState("");
   const [customIndustry, setCustomIndustry] = useState("");
+  const [targetingMode, setTargetingMode] = useState<TargetingMode>(DEFAULT_SETTINGS.targetingMode);
+  const [targetingNumbers, setTargetingNumbers] = useState<string[]>(DEFAULT_SETTINGS.targetingNumbers);
+  const [selectedCountryCode, setSelectedCountryCode] = useState<(typeof COUNTRY_OPTIONS)[number]["code"]>("EC");
+  const [welcomeLogoUrl, setWelcomeLogoUrl] = useState<string | null>(DEFAULT_SETTINGS.welcomeLogoUrl);
+  const [welcomeLogoFilename, setWelcomeLogoFilename] = useState<string | null>(DEFAULT_SETTINGS.welcomeLogoFilename);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [targetingDraft, setTargetingDraft] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -116,6 +193,10 @@ export function SettingsSection({
     if (!businessId) {
       setLoadError(null);
       setIsLoadingBusiness(false);
+      setTargetingMode(DEFAULT_SETTINGS.targetingMode);
+      setTargetingNumbers(DEFAULT_SETTINGS.targetingNumbers);
+      setWelcomeLogoUrl(DEFAULT_SETTINGS.welcomeLogoUrl);
+      setWelcomeLogoFilename(DEFAULT_SETTINGS.welcomeLogoFilename);
       return;
     }
 
@@ -133,17 +214,25 @@ export function SettingsSection({
       setFormError(null);
       setFormSuccess(null);
 
-      const result = await getMyBusiness(token);
+      const [businessResult, settingsResult] = await Promise.all([
+        getMyBusiness(token),
+        getBusinessSettings(token),
+      ]);
       if (cancelled) return;
 
       setIsLoadingBusiness(false);
 
-      if (!result.ok) {
-        setLoadError(result.message);
+      if (!businessResult.ok) {
+        setLoadError(businessResult.message);
         return;
       }
 
-      const hydrated = hydrateFormFromBusiness(result.business);
+      if (!settingsResult.ok) {
+        setLoadError(settingsResult.message);
+        return;
+      }
+
+      const hydrated = hydrateFormFromBusiness(businessResult.business);
       setBusinessName(hydrated.name);
       setBusinessEmail(hydrated.email || sessionUser.email);
       setBusinessDescription(hydrated.description);
@@ -154,6 +243,10 @@ export function SettingsSection({
       setBusinessPhone(hydrated.phone);
       setIndustry(hydrated.industry);
       setCustomIndustry(hydrated.customIndustry);
+      setTargetingMode(settingsResult.settings.targetingMode);
+      setTargetingNumbers(settingsResult.settings.targetingNumbers);
+      setWelcomeLogoUrl(settingsResult.settings.welcomeLogoUrl);
+      setWelcomeLogoFilename(settingsResult.settings.welcomeLogoFilename);
     };
 
     void loadBusiness();
@@ -167,6 +260,60 @@ export function SettingsSection({
   const finalIndustry = industry === "otro" ? customIndustry.trim() : industry;
   const isEditing = Boolean(sessionUser.businessId);
   const isBusy = isSaving || isLoadingBusiness;
+  const selectedCountry = COUNTRY_OPTIONS.find((option) => option.code === selectedCountryCode) ?? COUNTRY_OPTIONS[0];
+  const usesTargetingList = targetingMode !== "all";
+
+  const addTargetingNumber = () => {
+    setFormError(null);
+    setFormSuccess(null);
+
+    const normalized = buildNormalizedPhone(selectedCountry.dialCode, targetingDraft);
+    if (!normalized) {
+      setFormError("Ingresa un numero valido para agregar a la lista.");
+      return;
+    }
+
+    if (targetingNumbers.includes(normalized)) {
+      setFormError("Ese numero ya esta agregado en la lista.");
+      return;
+    }
+
+    setTargetingNumbers((current) => [...current, normalized]);
+    setTargetingDraft("");
+  };
+
+  const removeTargetingNumber = (value: string) => {
+    setTargetingNumbers((current) => current.filter((item) => item !== value));
+  };
+
+  const handleWelcomeLogoChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    const token = getAccessToken();
+    if (!token) {
+      setFormError("No hay una sesion valida para subir el logo de bienvenida.");
+      return;
+    }
+
+    setFormError(null);
+    setFormSuccess(null);
+    setIsUploadingLogo(true);
+
+    const result = await uploadWelcomeLogo(token, file);
+    setIsUploadingLogo(false);
+
+    if (!result.ok) {
+      setFormError(result.message);
+      return;
+    }
+
+    setWelcomeLogoUrl(result.settings.welcomeLogoUrl);
+    setWelcomeLogoFilename(result.settings.welcomeLogoFilename);
+    setFormSuccess("Logo de bienvenida actualizado correctamente.");
+  };
 
   const handleSubmit = async () => {
     setFormError(null);
@@ -219,17 +366,17 @@ export function SettingsSection({
       token,
     };
 
-    const result = isEditing && sessionUser.businessId
+    const businessResult = isEditing && sessionUser.businessId
       ? await updateBusiness({
           id: sessionUser.businessId,
           ...payload,
         })
       : await createBusiness(payload);
 
-    setIsSaving(false);
+    if (!businessResult.ok) {
+      setIsSaving(false);
 
-    if (!result.ok) {
-      if (!isEditing && result.code === "conflict") {
+      if (!isEditing && businessResult.code === "conflict") {
         const refreshed = await refreshSession();
         if (refreshed) {
           onBusinessCreated();
@@ -237,7 +384,7 @@ export function SettingsSection({
         }
       }
 
-      setFormError(result.message);
+      setFormError(businessResult.message);
       return;
     }
 
@@ -247,24 +394,38 @@ export function SettingsSection({
         current
           ? {
               ...current,
-              businessId: result.business.id,
+              businessId: businessResult.business.id,
               business: {
-                id: result.business.id,
-                name: result.business.name,
+                id: businessResult.business.id,
+                name: businessResult.business.name,
               },
             }
           : current,
       );
     }
 
-    setFormSuccess(isEditing ? "Negocio actualizado correctamente." : "Negocio guardado correctamente.");
-
-    if (!isEditing) {
-      onBusinessCreated();
+    const settingsToken = getAccessToken();
+    if (!settingsToken) {
+      setIsSaving(false);
+      setFormError("No se pudo obtener una sesion valida para guardar la configuracion de envio.");
       return;
     }
 
-    const hydrated = hydrateFormFromBusiness(result.business);
+    const settingsResult = await updateBusinessSettings(settingsToken, {
+      targetingMode,
+      targetingNumbers,
+    });
+
+    setIsSaving(false);
+
+    if (!settingsResult.ok) {
+      setFormError(`${isEditing ? "El negocio se actualizo" : "El negocio se guardo"}, pero no se pudo guardar la configuracion de envio.`);
+      return;
+    }
+
+    setFormSuccess(isEditing ? "Negocio y configuracion de envio actualizados correctamente." : "Negocio y configuracion de envio guardados correctamente.");
+
+    const hydrated = hydrateFormFromBusiness(businessResult.business);
     setBusinessName(hydrated.name);
     setBusinessEmail(hydrated.email || sessionUser.email);
     setBusinessDescription(hydrated.description);
@@ -275,6 +436,14 @@ export function SettingsSection({
     setBusinessPhone(hydrated.phone);
     setIndustry(hydrated.industry);
     setCustomIndustry(hydrated.customIndustry);
+    setTargetingMode(settingsResult.settings.targetingMode);
+    setTargetingNumbers(settingsResult.settings.targetingNumbers);
+      setWelcomeLogoUrl(settingsResult.settings.welcomeLogoUrl);
+      setWelcomeLogoFilename(settingsResult.settings.welcomeLogoFilename);
+
+    if (!isEditing) {
+      onBusinessCreated();
+    }
   };
 
   return (
@@ -430,6 +599,133 @@ export function SettingsSection({
               </button>
             )}
 
+            <div className="grid gap-4 rounded-[1.35rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.95),rgba(243,245,240,0.9))] p-5 shadow-sm">
+              <div className="grid gap-2">
+                <label className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  Logo de bienvenida
+                </label>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Este logo se enviara en el primer saludo cuando el cliente ya haya respondido como quiere que lo llamen.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-start">
+                <div className="grid gap-3">
+                  <Input accept="image/*" disabled={isBusy || isUploadingLogo || !isEditing} onChange={handleWelcomeLogoChange} type="file" />
+                  <p className="text-xs text-muted-foreground">
+                    {isEditing
+                      ? isUploadingLogo
+                        ? "Subiendo logo..."
+                        : welcomeLogoFilename
+                          ? "Archivo actual: " + welcomeLogoFilename
+                          : "Aun no hay un logo cargado para la bienvenida."
+                      : "Guarda primero el negocio para habilitar la carga del logo."}
+                  </p>
+                </div>
+                <div className="overflow-hidden rounded-2xl border border-border bg-background/80">
+                  {welcomeLogoUrl ? (
+                    <img alt="Logo de bienvenida" className="h-44 w-full object-cover" src={welcomeLogoUrl} />
+                  ) : (
+                    <div className="grid h-44 place-items-center px-6 text-center text-sm text-muted-foreground">
+                      Vista previa del logo de bienvenida
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 rounded-[1.35rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.95),rgba(243,245,240,0.9))] p-5 shadow-sm">
+              <div className="grid gap-2">
+                <label className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <ShieldBan className="h-3.5 w-3.5" />
+                  Restriccion de numeros para respuestas reales
+                </label>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Define si el bot puede responder a todos los numeros, excluir algunos o permitir solo una lista especifica.
+                  Esta regla aplica solo a envios reales del bot, no al modulo Debug.
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                {TARGETING_MODE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                      targetingMode === option.value
+                        ? "border-panel-steel/40 bg-panel-signal/25"
+                        : "border-border bg-background/75 hover:bg-muted/30"
+                    }`}
+                    disabled={isBusy}
+                    onClick={() => setTargetingMode(option.value)}
+                    type="button"
+                  >
+                    <p className="text-sm font-medium text-panel-ink">{option.label}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{option.description}</p>
+                  </button>
+                ))}
+              </div>
+
+              {usesTargetingList ? (
+                <div className="grid gap-4 rounded-2xl border border-border bg-background/80 p-4">
+                  <div className="grid gap-3 lg:grid-cols-[190px_minmax(0,1fr)_auto] lg:items-end">
+                    <Field label="Pais / prefijo" icon={Globe2}>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-muted/45 px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
+                        disabled={isBusy}
+                        onChange={(event) => setSelectedCountryCode(event.target.value as (typeof COUNTRY_OPTIONS)[number]["code"])}
+                        value={selectedCountryCode}
+                      >
+                        {COUNTRY_OPTIONS.map((option) => (
+                          <option key={option.code} value={option.code}>
+                            {option.label} ({option.dialCode})
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Numero" icon={Phone}>
+                      <Input
+                        disabled={isBusy}
+                        onChange={(event) => setTargetingDraft(event.target.value)}
+                        placeholder="Ej. 987654321"
+                        value={targetingDraft}
+                      />
+                    </Field>
+                    <Button disabled={isBusy} onClick={addTargetingNumber} type="button" variant="secondary">
+                      <Plus className="h-4 w-4" />
+                      Agregar
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Los numeros se guardan normalizados con el prefijo del pais seleccionado. Prefijo actual: {selectedCountry.dialCode}
+                  </p>
+
+                  {targetingNumbers.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {targetingNumbers.map((value) => (
+                        <Badge className="flex items-center gap-2 px-3 py-2" key={value} variant="default">
+                          <span>{value}</span>
+                          <button
+                            className="rounded-full text-current transition-opacity hover:opacity-70"
+                            disabled={isBusy}
+                            onClick={() => removeTargetingNumber(value)}
+                            type="button"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
+                      Aun no hay numeros agregados para esta regla.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
             {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
             {formSuccess ? <p className="text-sm text-success">{formSuccess}</p> : null}
 
@@ -496,3 +792,8 @@ function Field({
     </div>
   );
 }
+
+
+
+
+
