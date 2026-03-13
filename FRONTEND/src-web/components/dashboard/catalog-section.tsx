@@ -7,7 +7,6 @@ import {
   getProducts,
   updateProduct,
   uploadProductMedia,
-  type ProductMediaType,
   type ProductView,
 } from "@/services/products-service";
 import { Badge } from "@/components/ui/badge";
@@ -107,7 +106,6 @@ export function CatalogSection() {
       stock: item.stock,
       isActive: item.isActive,
       whatsappCaption: item.whatsappCaption?.trim() || null,
-      mediaType: item.mediaType,
     };
 
     const result = item.id.startsWith("draft-")
@@ -262,11 +260,6 @@ export function CatalogSection() {
                     <input checked={item.isActive} onChange={(event) => updateDraft(item.id, { isActive: event.target.checked })} type="checkbox" />
                     Visible para el bot
                   </label>
-                  <select className="h-10 rounded-md border border-input bg-background/80 px-3 text-sm" onChange={(event) => updateDraft(item.id, { mediaType: (event.target.value || null) as ProductMediaType | null })} value={item.mediaType ?? ""}>
-                    <option value="">Sin media</option>
-                    <option value="image">Imagen</option>
-                    <option value="video">Video</option>
-                  </select>
                 </div>
 
                 <div className="flex flex-wrap gap-3">

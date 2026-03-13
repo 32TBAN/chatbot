@@ -34,7 +34,7 @@ export type CreateBusinessResult =
     }
   | {
       ok: false;
-      code: "conflict" | "network_error" | "server_error" | "config_error";
+      code: "conflict" | "network_error" | "server_error" | "config_error" | "unauthorized";
       message: string;
     };
 
@@ -57,7 +57,7 @@ export type GetMyBusinessResult =
     }
   | {
       ok: false;
-      code: "network_error" | "server_error" | "config_error";
+      code: "network_error" | "server_error" | "config_error" | "unauthorized";
       message: string;
     };
 
@@ -73,7 +73,7 @@ export type UpdateBusinessResult =
     }
   | {
       ok: false;
-      code: "network_error" | "server_error" | "config_error";
+      code: "network_error" | "server_error" | "config_error" | "unauthorized";
       message: string;
     };
 
@@ -117,6 +117,14 @@ export async function createBusiness(input: CreateBusinessInput): Promise<Create
       },
       body: JSON.stringify(buildBusinessPayload(input)),
     });
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        ok: false,
+        code: "unauthorized",
+        message: "Tu sesion expiro o ya no es valida. Inicia sesion nuevamente.",
+      };
+    }
 
     if (response.status === 409) {
       return {
@@ -180,6 +188,14 @@ export async function getMyBusiness(token: string): Promise<GetMyBusinessResult>
       },
     });
 
+    if (response.status === 401 || response.status === 403) {
+      return {
+        ok: false,
+        code: "unauthorized",
+        message: "Tu sesion expiro o ya no es valida. Inicia sesion nuevamente.",
+      };
+    }
+
     if (!response.ok) {
       return {
         ok: false,
@@ -235,6 +251,14 @@ export async function updateBusiness(input: UpdateBusinessInput): Promise<Update
       },
       body: JSON.stringify(buildBusinessPayload(input)),
     });
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        ok: false,
+        code: "unauthorized",
+        message: "Tu sesion expiro o ya no es valida. Inicia sesion nuevamente.",
+      };
+    }
 
     if (!response.ok) {
       return {

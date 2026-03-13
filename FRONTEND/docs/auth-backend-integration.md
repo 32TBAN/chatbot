@@ -43,3 +43,44 @@ En esta etapa, el valor principal no esta en activar todos los modulos con infor
 - Si el acceso deja de reflejar bien el estado real de la sesion, la experiencia perdera confianza.
 - Si los mensajes no distinguen bien entre error de acceso y problema de conexion, el usuario puede frustrarse.
 - Si otras areas del panel siguen con informacion de ejemplo por mucho tiempo, puede generarse una expectativa desigual.
+
+## Extension: Recuperacion de Sesion en Configuracion del Negocio
+
+### Resumen
+
+- La carga inicial de `Configuracion` puede fallar aunque la app todavia tenga `sessionUser` con `businessId`.
+- El escenario confirmado es `401 Unauthorized` en `GET /api/businesses/me` y `GET /api/business-settings`.
+- Ese error no representa un problema de datos del negocio, sino una sesion local que ya no es valida para el backend.
+- El frontend no debe mostrar ese caso como "No se pudo cargar la informacion del negocio".
+- Para `401` o `403`, la experiencia correcta es invalidar la sesion y devolver al flujo de login con un mensaje claro.
+- Los errores de red, configuracion o servidor deben seguir usando el manejo actual con mensaje contextual y opcion de reintento.
+
+### Supuestos
+
+- Los endpoints del negocio y configuracion usan autenticacion protegida con `Bearer`.
+- `sessionUser` puede quedar desincronizado respecto al estado real del token.
+- El login del usuario es una recuperacion aceptable cuando el backend rechaza el token.
+- No es objetivo de este cambio corregir la configuracion interna del backend o JWT.
+
+### Decision Log
+
+- Decision: distinguir `401/403` como `unauthorized` en la capa de servicios.
+  Alternatives: mantener `server_error` generico.
+  Why: el componente necesita saber si el problema es de sesion o de negocio.
+- Decision: invalidar sesion y volver a login cuando la carga del negocio responda `unauthorized`.
+  Alternatives: solo mostrar error, solo permitir reintentar.
+  Why: la app ya no puede confiar en la sesion local.
+- Decision: conservar `loadError` y `Reintentar` para fallos no relacionados con autenticacion.
+  Alternatives: unificar todos los errores en una sola experiencia.
+  Why: la accion correcta cambia segun el tipo de fallo.
+- Decision: reutilizar el contexto de auth para cerrar la sesion con un mensaje de advertencia.
+  Alternatives: manejar logout directamente desde el componente.
+  Why: evita duplicar logica y mantiene la responsabilidad de auth en un solo lugar.
+
+### Diseno Final
+
+La capa `lib/business.ts` y `lib/business-settings.ts` debe exponer un codigo `unauthorized` cuando el backend responda `401` o `403`. Eso evita que `SettingsSection` trate un rechazo de token como si fuera un error de negocio o de infraestructura.
+
+`SettingsSection` debe detectar ese codigo durante la carga inicial y durante las acciones de guardado relevantes. Cuando ocurra, no debe setear `loadError` ni `formError` genericos, sino disparar una invalidacion de sesion a traves del contexto de autenticacion.
+
+El contexto de autenticacion debe ofrecer una accion para invalidar la sesion y dejar un mensaje visible en la pantalla de login. El mensaje recomendado es: "Tu sesion expiro o ya no es valida. Inicia sesion nuevamente."

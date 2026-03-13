@@ -33,6 +33,7 @@ type AuthContextValue = {
   submitRegister: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   switchMode: (mode: AuthMode) => void;
   performLogout: () => Promise<void>;
+  invalidateSession: (message?: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -138,12 +139,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthStatus({ tone: "success", message: "Cuenta creada. Inicia sesion para continuar." });
   };
 
-  const performLogout = async () => {
+  const invalidateSession = async (message = "Tu sesion expiro o ya no es valida. Inicia sesion nuevamente.") => {
     setLogoutBusy(true);
     await logout();
     setLogoutBusy(false);
     setSessionUser(null);
     setAuthMode("login");
+    setAuthStatus({ tone: "warning", message });
+  };
+
+  const performLogout = async () => {
+    await invalidateSession("La sesion se cerro correctamente.");
     setAuthStatus({ tone: "neutral", message: "La sesion se cerro correctamente." });
   };
 
@@ -161,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         registerValues,
         logoutBusy,
         performLogout,
+        invalidateSession,
         refreshSession,
         sessionUser,
         getAccessToken: getSessionToken,

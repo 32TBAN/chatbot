@@ -18,6 +18,16 @@ export type ProductView = {
   updatedAt?: string;
 };
 
+export type ProductUpsertInput = {
+  name: string;
+  description: string | null;
+  price: number | null;
+  currency: string | null;
+  stock: number | null;
+  isActive: boolean;
+  whatsappCaption: string | null;
+};
+
 type ProductResponse = Partial<ProductView> & { id: string; name: string };
 
 type ProductsResult<T> =
@@ -94,14 +104,14 @@ export function getProducts(token: string) {
   );
 }
 
-export function createProduct(token: string, input: Omit<ProductView, "id" | "mediaUrl" | "mediaFilename" | "createdAt" | "updatedAt">) {
+export function createProduct(token: string, input: ProductUpsertInput) {
   return requestProducts<ProductResponse>("/products", token, {
     method: "POST",
     body: JSON.stringify(input),
   }).then((result) => (result.ok ? { ok: true as const, data: mapProduct(result.data) } : result));
 }
 
-export function updateProduct(token: string, id: string, input: Partial<ProductView>) {
+export function updateProduct(token: string, id: string, input: Partial<ProductUpsertInput>) {
   return requestProducts<ProductResponse>(`/products/${id}`, token, {
     method: "PATCH",
     body: JSON.stringify(input),

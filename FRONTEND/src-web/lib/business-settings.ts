@@ -33,7 +33,7 @@ type BusinessSettingsResult =
     }
   | {
       ok: false;
-      code: "network_error" | "server_error" | "config_error";
+      code: "network_error" | "server_error" | "config_error" | "unauthorized";
       message: string;
     };
 
@@ -87,6 +87,14 @@ async function requestBusinessSettings(token: string, init?: RequestInit): Promi
         ...(init?.headers ?? {}),
       },
     });
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        ok: false,
+        code: "unauthorized",
+        message: "Tu sesion expiro o ya no es valida. Inicia sesion nuevamente.",
+      };
+    }
 
     if (!response.ok) {
       return {
@@ -161,6 +169,14 @@ export async function uploadWelcomeLogo(token: string, file: File): Promise<Busi
       },
       body: formData,
     });
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        ok: false,
+        code: "unauthorized",
+        message: "Tu sesion expiro o ya no es valida. Inicia sesion nuevamente.",
+      };
+    }
 
     if (!response.ok) {
       return {

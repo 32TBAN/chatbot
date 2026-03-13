@@ -144,7 +144,7 @@ export function SettingsSection({
   sessionUser: AuthUser;
   setupIncomplete: boolean;
 }) {
-  const { getAccessToken, refreshSession, setSessionUser } = useAuth();
+  const { getAccessToken, invalidateSession, refreshSession, setSessionUser } = useAuth();
   const [businessName, setBusinessName] = useState(sessionUser.business?.name ?? "");
   const [businessEmail, setBusinessEmail] = useState(sessionUser.email);
   const [businessDescription, setBusinessDescription] = useState("");
@@ -223,11 +223,21 @@ export function SettingsSection({
       setIsLoadingBusiness(false);
 
       if (!businessResult.ok) {
+        if (businessResult.code === "unauthorized") {
+          await invalidateSession(businessResult.message);
+          return;
+        }
+
         setLoadError(businessResult.message);
         return;
       }
 
       if (!settingsResult.ok) {
+        if (settingsResult.code === "unauthorized") {
+          await invalidateSession(settingsResult.message);
+          return;
+        }
+
         setLoadError(settingsResult.message);
         return;
       }
@@ -254,7 +264,7 @@ export function SettingsSection({
     return () => {
       cancelled = true;
     };
-  }, [getAccessToken, loadAttempt, sessionUser.businessId, sessionUser.email]);
+  }, [getAccessToken, invalidateSession, loadAttempt, sessionUser.businessId, sessionUser.email]);
 
   const slugValue = useMemo(() => normalizeSlug(businessSlug), [businessSlug]);
   const finalIndustry = industry === "otro" ? customIndustry.trim() : industry;
@@ -306,6 +316,11 @@ export function SettingsSection({
     setIsUploadingLogo(false);
 
     if (!result.ok) {
+      if (result.code === "unauthorized") {
+        await invalidateSession(result.message);
+        return;
+      }
+
       setFormError(result.message);
       return;
     }
@@ -376,6 +391,11 @@ export function SettingsSection({
     if (!businessResult.ok) {
       setIsSaving(false);
 
+      if (businessResult.code === "unauthorized") {
+        await invalidateSession(businessResult.message);
+        return;
+      }
+
       if (!isEditing && businessResult.code === "conflict") {
         const refreshed = await refreshSession();
         if (refreshed) {
@@ -419,6 +439,11 @@ export function SettingsSection({
     setIsSaving(false);
 
     if (!settingsResult.ok) {
+      if (settingsResult.code === "unauthorized") {
+        await invalidateSession(settingsResult.message);
+        return;
+      }
+
       setFormError(`${isEditing ? "El negocio se actualizo" : "El negocio se guardo"}, pero no se pudo guardar la configuracion de envio.`);
       return;
     }
@@ -792,8 +817,3 @@ function Field({
     </div>
   );
 }
-
-
-
-
-
