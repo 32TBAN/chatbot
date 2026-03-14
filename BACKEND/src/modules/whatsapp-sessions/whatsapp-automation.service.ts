@@ -9,7 +9,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { OutboundAction } from './whatsapp-sessions.types';
 
-type IntentKey = 'appointments' | 'products' | 'support';
+type IntentKey = 'appointments' | 'products' | 'location' | 'support';
 type ConversationStep = 'awaiting_name' | 'appointment_date' | 'appointment_time' | 'appointment_retry' | 'appointment_subject';
 
 type FlowGraph = Prisma.FlowGetPayload<{
@@ -58,16 +58,18 @@ const GREETING_KEYWORDS = ['hola', 'buenos dias', 'buenas tardes', 'buenas noche
 const INTENT_NODE_TYPES: Record<IntentKey, FlowNodeType> = {
   appointments: FlowNodeType.appointments,
   products: FlowNodeType.products,
+  location: FlowNodeType.location,
   support: FlowNodeType.support,
 };
 
 const INTENT_KEYWORDS: Record<IntentKey, string[]> = {
   appointments: ['cita', 'reservar', 'reserva', 'agendar', 'turno', 'agenda'],
   products: ['producto', 'productos', 'catalogo', 'precio', 'precios', 'stock'],
+  location: ['ubicacion', 'direccion', 'mapa', 'como llegar', 'donde estan'],
   support: ['soporte', 'ayuda', 'agente', 'humano', 'asesor'],
 };
 
-const INTENT_PRIORITY: IntentKey[] = ['appointments', 'products', 'support'];
+const INTENT_PRIORITY: IntentKey[] = ['appointments', 'products', 'location', 'support'];
 
 @Injectable()
 export class WhatsappAutomationService {
@@ -185,6 +187,27 @@ export class WhatsappAutomationService {
       return this.buildGreetingSequence(customerName, settings, menuNode, welcomeNode?.content ?? settings?.welcomeMessage ?? null);
     }
 
+    const selectedMenuOption = menuNode?.options.find(
+      (option, index) => normalized === String(index + 1) || normalized === this.normalizeText(option.optionLabel),
+    ) ?? null;
+
+    if (selectedMenuOption?.nextNode?.nodeType === FlowNodeType.products) {
+      return this.buildProductActions(products, this.findNode(flow, FlowNodeType.products)?.content ?? null);
+    }
+
+    if (selectedMenuOption?.nextNode?.nodeType === FlowNodeType.appointments) {
+      return this.startAppointmentConversation(businessId, customerId, this.findNode(flow, FlowNodeType.appointments)?.content ?? null);
+    }
+
+    if (selectedMenuOption?.nextNode?.nodeType === FlowNodeType.location) {
+      return this.buildLocationActions(settings, this.findNode(flow, FlowNodeType.location)?.content ?? null);
+    }
+
+    if (selectedMenuOption?.nextNode?.nodeType === FlowNodeType.support) {
+      const supportText = this.findNode(flow, FlowNodeType.support)?.content?.trim() || settings?.supportMessage?.trim() || null;
+      return supportText ? [{ type: 'text', content: supportText }] : [];
+    }
+
     if (intent === 'products') {
       return this.buildProductActions(products, this.findNode(flow, FlowNodeType.products)?.content ?? null);
     }
@@ -193,11 +216,14 @@ export class WhatsappAutomationService {
       return this.startAppointmentConversation(businessId, customerId, this.findNode(flow, FlowNodeType.appointments)?.content ?? null);
     }
 
+    if (intent === 'location') {
+      return this.buildLocationActions(settings, this.findNode(flow, FlowNodeType.location)?.content ?? null);
+    }
+
     if (intent === 'support') {
       const supportText = this.findNode(flow, FlowNodeType.support)?.content?.trim() || settings?.supportMessage?.trim() || null;
       return supportText ? [{ type: 'text', content: supportText }] : [];
     }
-
     if (shouldShowMenu && menuNode) {
       return [{ type: 'text', content: this.formatMenuMessage(menuNode) }];
     }
@@ -250,12 +276,12 @@ export class WhatsappAutomationService {
   ) {
     if (!hasExistingState) {
       await this.upsertConversationState(businessId, customerId, 'awaiting_name');
-      return [{ type: 'text', content: 'Hola, antes de continuar, �como te gustaria que te llamemos?' }];
+      return [{ type: 'text', content: 'Hola, antes de continuar, Ãƒâ€šÃ‚Â¿como te gustaria que te llamemos?' }];
     }
 
     const cleanedName = this.formatCustomerName(normalizedInput);
     if (!cleanedName) {
-      return [{ type: 'text', content: 'Necesito un nombre valido para continuar. �Como te gustaria que te llamemos?' }];
+      return [{ type: 'text', content: 'Necesito un nombre valido para continuar. Ãƒâ€šÃ‚Â¿Como te gustaria que te llamemos?' }];
     }
 
     await this.prisma.customer.update({
@@ -310,7 +336,7 @@ export class WhatsappAutomationService {
       const date = payload.date;
       if (!date || !(await this.isScheduleAvailable(input.businessId, date, time))) {
         await this.upsertConversationState(input.businessId, input.customerId, 'appointment_retry', { date, time });
-        return [{ type: 'text', content: 'Esa fecha u hora no esta disponible. �Quieres intentar otra vez? Responde si o no.' }];
+        return [{ type: 'text', content: 'Esa fecha u hora no esta disponible. Ãƒâ€šÃ‚Â¿Quieres intentar otra vez? Responde si o no.' }];
       }
 
       await this.upsertConversationState(input.businessId, input.customerId, 'appointment_subject', { date, time });
@@ -318,7 +344,7 @@ export class WhatsappAutomationService {
     }
 
     if (input.state.currentState === 'appointment_retry') {
-      if (input.normalized === 'si' || input.normalized === 's�') {
+      if (input.normalized === 'si' || input.normalized === 'sÃƒÆ’Ã‚Â­') {
         await this.upsertConversationState(input.businessId, input.customerId, 'appointment_date');
         return [{ type: 'text', content: 'De acuerdo. Ingresa una nueva fecha en formato AAAA-MM-DD.' }];
       }
@@ -446,6 +472,36 @@ export class WhatsappAutomationService {
     return actions;
   }
 
+  private buildLocationActions(
+    settings:
+      | {
+          locationLatitude?: Prisma.Decimal | number | null;
+          locationLongitude?: Prisma.Decimal | number | null;
+          locationLabel?: string | null;
+          locationAddress?: string | null;
+          locationGoogleMapsUrl?: string | null;
+        }
+      | null,
+    intro: string | null,
+  ) {
+    const latitude = settings?.locationLatitude == null ? null : Number(settings.locationLatitude);
+    const longitude = settings?.locationLongitude == null ? null : Number(settings.locationLongitude);
+
+    if (latitude == null || longitude == null || Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      const fallback = intro?.trim() || 'Todavia no hemos configurado la ubicacion del negocio.';
+      return [{ type: 'text', content: fallback }] as OutboundAction[];
+    }
+
+    return [{
+      type: 'location',
+      latitude,
+      longitude,
+      intro: intro?.trim() || 'Te comparto la ubicacion del negocio para que puedas llegar con facilidad.',
+      label: settings?.locationLabel?.trim() || null,
+      address: settings?.locationAddress?.trim() || null,
+      url: settings?.locationGoogleMapsUrl?.trim() || null,
+    }] as OutboundAction[];
+  }
   private resolveOutboundMessageType(action: OutboundAction) {
     if (action.type === 'media') {
       return action.mediaKind === 'video' ? MessageType.video : action.mediaKind === 'image' ? MessageType.image : MessageType.document;
@@ -498,18 +554,6 @@ export class WhatsappAutomationService {
   }
 
   private detectIntent(message: string): IntentKey | null {
-    if (message === '1') {
-      return 'appointments';
-    }
-
-    if (message === '2') {
-      return 'products';
-    }
-
-    if (message === '3') {
-      return 'support';
-    }
-
     for (const intent of INTENT_PRIORITY) {
       if (INTENT_KEYWORDS[intent].some((keyword) => message.includes(keyword))) {
         return intent;
@@ -518,7 +562,6 @@ export class WhatsappAutomationService {
 
     return null;
   }
-
   private formatMenuMessage(menuNode: FlowGraph['flowNodes'][number]) {
     const lines = menuNode.options.map((option, index) => `${index + 1}. ${option.optionLabel}`);
     const intro = menuNode.content?.trim() || 'Elige una opcion para continuar.';

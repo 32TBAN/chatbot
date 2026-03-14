@@ -1,6 +1,6 @@
 import { apiRequest } from "@/lib/api";
 
-export type AutomationKey = "welcome" | "menu" | "appointments" | "products" | "support";
+export type AutomationKey = "welcome" | "menu" | "appointments" | "products" | "location" | "support";
 
 export type QuickAutomationView = {
   key: AutomationKey;

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
+  MessageDirection,
   MessageType,
   WhatsappSession,
   WhatsappSessionStatus,
@@ -152,6 +153,32 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
         lastSeenAt: new Date(),
       },
     });
+  }
+
+  async sendActionsToCustomer(input: { businessId: string; customerId: string; phone: string; actions: OutboundAction[] }) {
+    const session = await this.prisma.whatsappSession.findUnique({ where: { businessId: input.businessId } });
+    const handle = session ? this.handles.get(input.businessId) : null;
+    if (!session || session.status !== WhatsappSessionStatus.connected || !handle?.client.sendMessage) {
+      throw new BadRequestException('La sesion de WhatsApp debe estar conectada para notificar al cliente.');
+    }
+
+    const chatId = `${input.phone.replace(/\D+/g, '')}@c.us`;
+
+    for (const action of input.actions) {
+      await this.sendOutboundAction(handle.client, chatId, action);
+      await this.prisma.message.create({
+        data: {
+          businessId: input.businessId,
+          customerId: input.customerId,
+          whatsappSessionId: session.id,
+          direction: MessageDirection.outbound,
+          messageType: this.resolveOutboundMessageType(action),
+          content: this.resolveOutboundContent(action),
+          mediaUrl: action.type === 'media' ? action.mediaUrl ?? null : null,
+          sentAt: new Date(),
+        },
+      });
+    }
   }
 
   async simulateInboundDebug(session: WhatsappSession, content: string) {
@@ -405,6 +432,34 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     return true;
   }
 
+
+  private resolveOutboundMessageType(action: OutboundAction) {
+    if (action.type === 'media') {
+      return action.mediaKind === 'video'
+        ? MessageType.video
+        : action.mediaKind === 'image'
+          ? MessageType.image
+          : MessageType.document;
+    }
+
+    if (action.type === 'location') {
+      return MessageType.location;
+    }
+
+    return MessageType.text;
+  }
+
+  private resolveOutboundContent(action: OutboundAction) {
+    if (action.type === 'media') {
+      return action.caption ?? null;
+    }
+
+    if (action.type === 'location') {
+      return action.intro ?? action.label ?? 'Ubicacion compartida';
+    }
+
+    return action.content;
+  }
   private mapMessageType(rawType?: string, hasMedia?: boolean) {
     if (rawType === 'image') return MessageType.image;
     if (rawType === 'document') return MessageType.document;

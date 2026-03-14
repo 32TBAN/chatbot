@@ -7,5 +7,6 @@ import { WhatsappAutomationService } from './whatsapp-automation.service';
 @Module({
   controllers: [WhatsappSessionsController],
   providers: [WhatsappAutomationService, WhatsappRuntimeService, WhatsappSessionsService],
+  exports: [WhatsappRuntimeService, WhatsappAutomationService],
 })
 export class WhatsappSessionsModule {}

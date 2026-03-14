@@ -42,7 +42,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const quickOrder: AutomationKey[] = ["welcome", "menu", "appointments", "products", "support"];
+const quickOrder: AutomationKey[] = ["welcome", "menu", "appointments", "products", "location", "support"];
 type SectionTab = "quick" | "menu" | "keywords";
 type PreviewMessage = {
   id: string;
@@ -62,14 +62,16 @@ const targetLabels: Record<AutomationKey, string> = {
   menu: "Menu principal",
   appointments: "Reserva de citas",
   products: "Catalogo de productos",
+  location: "Ubicacion del negocio",
   support: "Soporte humano",
 };
 
 const quickActionDetails: Record<AutomationKey, string> = {
   welcome: "Cuando un cliente escribe por primera vez.",
-  menu: "Ofrece opciones como citas, productos o soporte.",
+  menu: "Ofrece opciones como citas, productos, ubicacion o soporte.",
   appointments: "Permite que el cliente agende una cita automaticamente.",
   products: "Permite que el cliente consulte productos disponibles.",
+  location: "Comparte la ubicacion configurada del negocio directamente por WhatsApp.",
   support: "Escala la conversacion a un agente.",
 };
 
@@ -78,6 +80,7 @@ const defaultTriggers: Record<AutomationKey, string[]> = {
   menu: ["menu", "opciones", "informacion", "que ofrecen"],
   appointments: ["reserva", "reservar", "cita", "agendar", "agenda"],
   products: ["producto", "productos", "catalogo", "precio", "precios", "stock"],
+  location: ["ubicacion", "direccion", "mapa", "donde estan", "como llegar"],
   support: ["soporte", "ayuda", "problema", "error", "falla"],
 };
 
@@ -100,7 +103,9 @@ const emptyFlow: AutomationMainFlowView = {
             ? "Claro, puedo ayudarte con tu reserva. Comparte el dia y la hora que prefieres."
             : key === "products"
               ? "Te comparto la informacion de productos y servicios disponibles ahora mismo."
-              : "Vamos a ayudarte con eso. Cuentame un poco mas del problema o consulta.",
+              : key === "location"
+                ? "Te comparto la ubicacion del negocio para que puedas llegar con facilidad."
+                : "Vamos a ayudarte con eso. Cuentame un poco mas del problema o consulta.",
     triggers: [...defaultTriggers[key]],
   })),
   menu: {
@@ -108,7 +113,8 @@ const emptyFlow: AutomationMainFlowView = {
     options: [
       { id: "menu-1", label: "Reservar cita", targetKey: "appointments", position: 1 },
       { id: "menu-2", label: "Ver productos", targetKey: "products", position: 2 },
-      { id: "menu-3", label: "Hablar con soporte", targetKey: "support", position: 3 },
+      { id: "menu-3", label: "Ver ubicacion", targetKey: "location", position: 3 },
+      { id: "menu-4", label: "Hablar con soporte", targetKey: "support", position: 4 },
     ],
   },
   keywords: [],
@@ -462,7 +468,7 @@ function FloatingChatPreview({
   const [messages, setMessages] = useState<PreviewMessage[]>([]);
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const fallbackMessage = "No pude detectar una intencion clara. Si quieres, escribe menu para ver las opciones disponibles.";
-  const orderedQuickKeys: AutomationKey[] = ["welcome", "menu", "appointments", "products", "support"];
+  const orderedQuickKeys: AutomationKey[] = ["welcome", "menu", "appointments", "products", "location", "support"];
   const keywordRules = keywords.filter((item) => item.keyword.trim());
   const automationMap = new Map(quickAutomations.map((item) => [item.key, item]));
 

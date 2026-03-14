@@ -27,7 +27,7 @@ import {
 } from '../../auth/types/authenticated-user.type';
 import { PrismaService } from '../../prisma/prisma.service';
 
-type AutomationKey = 'welcome' | 'menu' | 'appointments' | 'products' | 'support';
+type AutomationKey = 'welcome' | 'menu' | 'appointments' | 'products' | 'location' | 'support';
 
 type FlowWithGraph = Prisma.FlowGetPayload<{
   include: {
@@ -66,17 +66,17 @@ const QUICK_AUTOMATIONS: Array<{
     description: 'Cuando el cliente saluda o inicia la conversacion.',
     nodeType: FlowNodeType.welcome,
     defaultNodeTitle: 'Bienvenida',
-    defaultMessage: 'Hola 👋 Bienvenido a nuestro negocio. Estoy aqui para ayudarte en lo que necesites.',
+    defaultMessage: 'Hola Ã°Å¸â€˜â€¹ Bienvenido a nuestro negocio. Estoy aqui para ayudarte en lo que necesites.',
     defaultTriggers: ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'buenas'],
     sortOrder: 10,
   },
   {
     key: 'menu',
     title: 'Menu principal',
-    description: 'Ofrece opciones como citas, productos o soporte.',
+    description: 'Ofrece opciones como citas, productos, ubicacion o soporte.',
     nodeType: FlowNodeType.menu,
     defaultNodeTitle: 'Menu principal',
-    defaultMessage: '✨ Elige una opcion para continuar.',
+    defaultMessage: 'Ã¢Å“Â¨ Elige una opcion para continuar.',
     defaultTriggers: ['menu', 'opciones', 'informacion', 'que ofrecen'],
     sortOrder: 20,
   },
@@ -86,7 +86,7 @@ const QUICK_AUTOMATIONS: Array<{
     description: 'Permite que el cliente agende una cita automaticamente.',
     nodeType: FlowNodeType.appointments,
     defaultNodeTitle: 'Reserva de citas',
-    defaultMessage: '📅 Claro, puedo ayudarte con tu reserva. Comparte el dia y la hora que prefieres.',
+    defaultMessage: 'Ã°Å¸â€œâ€¦ Claro, puedo ayudarte con tu reserva. Comparte el dia y la hora que prefieres.',
     defaultTriggers: ['reserva', 'reservar', 'cita', 'agendar', 'agenda'],
     sortOrder: 30,
   },
@@ -96,9 +96,19 @@ const QUICK_AUTOMATIONS: Array<{
     description: 'Permite que el cliente consulte productos disponibles.',
     nodeType: FlowNodeType.products,
     defaultNodeTitle: 'Catalogo de productos',
-    defaultMessage: '🛍️ Te comparto la informacion de productos y servicios disponibles ahora mismo.',
+    defaultMessage: 'Ã°Å¸â€ºÂÃ¯Â¸Â Te comparto la informacion de productos y servicios disponibles ahora mismo.',
     defaultTriggers: ['producto', 'productos', 'catalogo', 'precio', 'precios', 'stock'],
     sortOrder: 40,
+  },
+  {
+    key: 'location',
+    title: 'Ubicacion del negocio',
+    description: 'Comparte la ubicacion configurada del negocio por WhatsApp.',
+    nodeType: FlowNodeType.location,
+    defaultNodeTitle: 'Ubicacion del negocio',
+    defaultMessage: 'Te comparto la ubicacion del negocio para que puedas llegar con facilidad.',
+    defaultTriggers: ['ubicacion', 'direccion', 'mapa', 'donde estan', 'como llegar'],
+    sortOrder: 50,
   },
   {
     key: 'support',
@@ -106,15 +116,16 @@ const QUICK_AUTOMATIONS: Array<{
     description: 'Escala la conversacion a un agente.',
     nodeType: FlowNodeType.support,
     defaultNodeTitle: 'Soporte humano',
-    defaultMessage: '🛠️ Vamos a ayudarte con eso. Cuentame un poco mas del problema o consulta.',
+    defaultMessage: 'Ã°Å¸â€ºÂ Ã¯Â¸Â Vamos a ayudarte con eso. Cuentame un poco mas del problema o consulta.',
     defaultTriggers: ['soporte', 'ayuda', 'problema', 'error', 'falla'],
-    sortOrder: 50,
+    sortOrder: 60,
   },
 ];
 
 const DEFAULT_MENU_OPTIONS: Array<{ label: string; targetKey: AutomationKey }> = [
   { label: 'Reservar cita', targetKey: 'appointments' },
   { label: 'Ver productos', targetKey: 'products' },
+  { label: 'Ver ubicacion', targetKey: 'location' },
   { label: 'Hablar con soporte', targetKey: 'support' },
 ];
 
@@ -589,7 +600,7 @@ class AutomationMainFlowService {
         message:
           menuNode?.content ??
           QUICK_AUTOMATIONS.find((item) => item.key === 'menu')?.defaultMessage ??
-          '✨ Elige una opcion para continuar.',
+          'Ã¢Å“Â¨ Elige una opcion para continuar.',
         options: menuOptions,
       },
       keywords:
