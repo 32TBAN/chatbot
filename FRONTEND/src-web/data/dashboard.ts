@@ -50,19 +50,19 @@ export const statusCards = [
     tone: "success" as const,
   },
   {
-    label: "Flujos en produccion",
+    label: "Flujos activos",
     value: "12",
     detail: "3 requieren revision",
     tone: "warning" as const,
   },
   {
-    label: "Citas para hoy",
+    label: "Citas de hoy",
     value: "08",
-    detail: "2 pendientes de confirmar",
+    detail: "2 por confirmar",
     tone: "default" as const,
   },
   {
-    label: "Clientes registrados",
+    label: "Clientes",
     value: "184",
     detail: "14 nuevos esta semana",
     tone: "default" as const,
@@ -71,9 +71,9 @@ export const statusCards = [
 
 export const onboardingSteps = [
   { title: "Conectar numero principal", detail: "QR verificado y sesion persistente", done: true },
-  { title: "Configurar mensaje de bienvenida", detail: "Mensaje activo para primera respuesta", done: true },
+  { title: "Configurar bienvenida", detail: "Mensaje activo en la primera respuesta", done: true },
   { title: "Publicar primer flujo", detail: "Reservas y soporte basico activos", done: true },
-  { title: "Definir horarios de atencion", detail: "Faltan bloques de sabado", done: false },
+  { title: "Definir horarios", detail: "Faltan bloques de sabado", done: false },
   { title: "Cargar catalogo base", detail: "3 productos aun sin visibilidad", done: false },
 ] as const;
 
@@ -145,8 +145,8 @@ export const interactions = [
 ] as const;
 
 export const metrics = [
-  { label: "Respuestas automaticas resueltas", value: "68%", change: "+4%" },
-  { label: "Tiempo medio a operador", value: "2m 10s", change: "-18s" },
+  { label: "Respuestas automaticas", value: "68%", change: "+4%" },
+  { label: "Tiempo a operador", value: "2m 10s", change: "-18s" },
   { label: "Conversion a cita", value: "21%", change: "+3%" },
 ] as const;
 
@@ -168,56 +168,56 @@ export const pageTitles = {
     eyebrow: "Centro de operaciones",
     title: "Estado operativo del negocio",
     description:
-      "Controla conexion, flujos, agenda y trazabilidad desde una sola mesa de trabajo.",
+      "Controla conexion, flujos, agenda y trazabilidad desde un solo panel.",
   },
   automations: {
     eyebrow: "Automatizaciones",
-    title: "Flujos activos y puntos de intervencion",
+    title: "Flujos activos e intervenciones",
     description:
-      "Cada bloque conecta una intencion del cliente con una accion concreta del negocio.",
+      "Cada bloque conecta la intencion del cliente con una accion del negocio.",
   },
   qr: {
     eyebrow: "Canal conectado",
-    title: "Sesion WhatsApp y salud del enlace",
+    title: "Sesion WhatsApp y estado del enlace",
     description:
-      "Monitorea la sesion, reconecta rapido y evita caidas en la operacion diaria.",
+      "Monitorea la sesion, reconecta rapido y evita caidas en la operacion.",
   },
   appointments: {
     eyebrow: "Agenda operativa",
-    title: "Bloques de atencion y confirmaciones",
+    title: "Horarios y confirmaciones",
     description:
-      "Organiza horarios laborales y detecta fricciones antes de que afecten la agenda.",
+      "Organiza bloques de atencion y detecta fricciones antes de afectar la agenda.",
   },
   catalog: {
     eyebrow: "Catalogo utilitario",
-    title: "Productos visibles para respuestas y ventas",
+    title: "Productos visibles para ventas",
     description:
-      "Gestiona fichas cortas, visibilidad y relacion con las automatizaciones del negocio.",
+      "Gestiona fichas, visibilidad y relacion con las automatizaciones.",
   },
   history: {
     eyebrow: "Trazabilidad",
-    title: "Interacciones recientes con resultado visible",
+    title: "Interacciones recientes",
     description:
-      "Sigue lo que paso, que flujo se activo y si hubo que intervenir manualmente.",
+      "Sigue lo ocurrido, el flujo activado y si hubo intervencion manual.",
   },
   settings: {
     eyebrow: "Configuracion base",
-    title: "Reglas del negocio y parametros generales",
+    title: "Reglas y parametros generales",
     description:
-      "Define horarios, mensajes base y responsables sin convertir el panel en un formulario eterno.",
+      "Define horarios, mensajes base y responsables sin volver pesado el panel.",
   },
   debug: {
     eyebrow: "Pruebas controladas",
-    title: "Debug de mensajes y respuestas del bot",
+    title: "Debug de mensajes del bot",
     description:
-      "Simula un inbound desde el panel para validar la respuesta automatica antes de usar el canal real.",
+      "Simula un inbound desde el panel antes de usar el canal real.",
   },
 };
 
 export const settingsGroups = [
   { title: "Perfil del negocio", detail: "Nombre comercial, zona horaria y canal principal" },
   { title: "Horarios de atencion", detail: "Bloques activos y dias no laborables" },
-  { title: "Mensaje de bienvenida", detail: "Primer contacto y expectativas de respuesta" },
+  { title: "Mensaje de bienvenida", detail: "Primer contacto y expectativa de respuesta" },
   { title: "Roles operativos", detail: "Acceso a citas, catalogo y soporte" },
 ] as const;
 
@@ -228,7 +228,7 @@ export const overviewHighlights = [
   },
   {
     title: "Puntos de revision",
-    text: "El flujo de productos requiere mejor cobertura para consultas de stock y promociones.",
+    text: "El flujo de productos requiere mejor cobertura para stock y promociones.",
   },
 ] as const;
 

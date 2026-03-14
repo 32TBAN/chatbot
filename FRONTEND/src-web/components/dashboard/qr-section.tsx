@@ -19,7 +19,7 @@ const STATUS_COPY: Record<WhatsappSessionStatus, { label: string; variant: "defa
   pending: { label: "Esperando escaneo", variant: "warning" },
   connected: { label: "Conectada", variant: "success" },
   paused: { label: "Pausada", variant: "default" },
-  disconnected: { label: "Desconectada", variant: "destructive" },
+  disconnected: { label: "Sin enlace", variant: "destructive" },
   expired: { label: "Credenciales vencidas", variant: "destructive" },
 };
 
@@ -175,7 +175,7 @@ export function QrSection() {
               <CardDescription>Canal principal</CardDescription>
               <CardTitle>QR y estado de sesion</CardTitle>
             </div>
-            {statusMeta ? <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge> : <Badge variant="default">Sin inicializar</Badge>}
+            {statusMeta ? <Badge className="max-w-full whitespace-normal text-center leading-4" variant={statusMeta.variant}>{statusMeta.label}</Badge> : <Badge className="max-w-full whitespace-normal text-center leading-4" variant="default">Sin inicializar</Badge>}
           </div>
         </CardHeader>
         <CardContent className="grid gap-5">
@@ -291,3 +291,4 @@ function Detail({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+

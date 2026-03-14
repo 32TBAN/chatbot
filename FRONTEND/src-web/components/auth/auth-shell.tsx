@@ -55,7 +55,7 @@ export function AuthShell() {
             {[
               {
                 icon: Workflow,
-                title: "Automatizaciones activas",
+                title: "Flujos activos",
                 detail: "Flujos editables con resultados visibles y trazables.",
               },
               {
@@ -75,7 +75,7 @@ export function AuthShell() {
                   <div className="grid h-10 w-10 place-items-center rounded-md border border-panel-steel/35 bg-panel-ivory/5">
                     <Icon className="h-4 w-4 text-panel-signal" />
                   </div>
-                  <p className="mt-4 text-sm font-medium">{item.title}</p>
+                  <p className="mt-4 text-sm font-medium leading-5 break-words">{item.title}</p>
                   <p className="mt-2 text-sm leading-6 text-panel-ivory/65">{item.detail}</p>
                 </div>
               );
@@ -143,3 +143,4 @@ export function AuthShell() {
     </div>
   );
 }
+

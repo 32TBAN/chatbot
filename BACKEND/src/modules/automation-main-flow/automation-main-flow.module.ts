@@ -49,6 +49,8 @@ const MAIN_FLOW_NAME = 'main_whatsapp_automation';
 const KEYWORD_ROUTER_TITLE = '__keyword_router__';
 const KEYWORD_NODE_PREFIX = '__keyword__';
 const MENU_TRIGGER_NODE_TITLE = '__menu_triggers__';
+const AUTOMATION_FLOW_TRANSACTION_MAX_WAIT_MS = 10_000;
+const AUTOMATION_FLOW_TRANSACTION_TIMEOUT_MS = 20_000;
 
 const QUICK_AUTOMATIONS: Array<{
   key: AutomationKey;

@@ -32,6 +32,7 @@ const qrCodeModule = require('qrcode') as {
 };
 
 const DEBUG_CHAT_SUFFIX = '@debug.local';
+const WHATSAPP_PROTOCOL_TIMEOUT_MS = 120_000;
 
 @Injectable()
 export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
@@ -208,6 +209,7 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
       }),
       puppeteer: {
         headless: true,
+        protocolTimeout: WHATSAPP_PROTOCOL_TIMEOUT_MS,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
       restartOnAuthFail: true,
@@ -229,6 +231,7 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
       await client.initialize();
     } catch (error) {
       this.handles.delete(session.businessId);
+      await this.safeDestroy(client);
       await this.prisma.whatsappSession.update({
         where: { id: session.id },
         data: {
@@ -237,8 +240,24 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
           lastSeenAt: new Date(),
         },
       });
+
+      if (restoring && this.isProtocolTimeoutError(error)) {
+        this.logger.warn(
+          WhatsApp restore timed out for business . Leaving session ready for manual reactivation.,
+        );
+        return;
+      }
+
       throw error;
     }
+  }
+
+  private isProtocolTimeoutError(error: unknown) {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    return error.name === 'ProtocolError' && error.message.includes('timed out');
   }
 
   private bindClientEvents(session: WhatsappSession, client: WhatsappClient, token: symbol) {
@@ -520,3 +539,4 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
+

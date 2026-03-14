@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bot, LoaderCircle, MessageSquareText, RefreshCw, Smartphone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ export function HistorySection() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -92,6 +93,19 @@ export function HistorySection() {
       window.clearInterval(intervalId);
     };
   }, [getAccessToken, selectedCustomerId]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !selectedConversation?.messages.length) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [selectedConversation?.customer?.id, selectedConversation?.messages.length]);
 
   const refreshInbox = async () => {
     const targetCustomerId = selectedCustomerId ?? conversations[0]?.customerId ?? null;
@@ -228,28 +242,34 @@ export function HistorySection() {
                 </div>
               </div>
 
-              <div className="grid gap-3 bg-[linear-gradient(180deg,rgba(243,247,242,0.92),rgba(253,251,245,0.96))] p-5">
-                {selectedConversation.messages.length ? selectedConversation.messages.map((message) => (
-                  <div className={cn('flex', message.direction === 'outbound' ? 'justify-end' : 'justify-start')} key={message.id}>
-                    <div className={cn('max-w-[82%] rounded-[1.4rem] px-4 py-3 text-sm leading-6 shadow-sm', message.direction === 'outbound' ? 'bg-panel-ink text-panel-ivory' : 'border border-border/80 bg-background/92 text-panel-ink')}>
-                      <p className={cn('text-[11px] uppercase tracking-[0.24em]', message.direction === 'outbound' ? 'text-panel-ivory/70' : 'text-muted-foreground')}>
-                        {message.direction === 'outbound'
-                          ? 'Bot'
-                          : selectedConversation.customer?.isDebug
-                            ? 'Debug inbound'
-                            : 'Cliente'}
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap">{message.content}</p>
-                      <p className={cn('mt-2 text-[11px]', message.direction === 'outbound' ? 'text-panel-ivory/70' : 'text-muted-foreground')}>
-                        {formatTimestamp(message.sentAt, true)}
-                      </p>
+              <div className="overflow-hidden rounded-[1.4rem] border border-border/70 bg-[linear-gradient(180deg,rgba(243,247,242,0.92),rgba(253,251,245,0.96))] m-5 mt-0">
+                <div className="flex items-center justify-between border-b border-border/60 px-5 py-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <span>Historial completo</span>
+                  <span>Vista inicial en los 10 mas recientes</span>
+                </div>
+                <div className="grid max-h-[min(60vh,540px)] gap-3 overflow-y-auto p-5" ref={messagesContainerRef}>
+                  {selectedConversation.messages.length ? selectedConversation.messages.map((message) => (
+                    <div className={cn('flex', message.direction === 'outbound' ? 'justify-end' : 'justify-start')} key={message.id}>
+                      <div className={cn('max-w-[82%] rounded-[1.4rem] px-4 py-3 text-sm leading-6 shadow-sm', message.direction === 'outbound' ? 'bg-panel-ink text-panel-ivory' : 'border border-border/80 bg-background/92 text-panel-ink')}>
+                        <p className={cn('text-[11px] uppercase tracking-[0.24em]', message.direction === 'outbound' ? 'text-panel-ivory/70' : 'text-muted-foreground')}>
+                          {message.direction === 'outbound'
+                            ? 'Bot'
+                            : selectedConversation.customer?.isDebug
+                              ? 'Debug inbound'
+                              : 'Cliente'}
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap">{message.content}</p>
+                        <p className={cn('mt-2 text-[11px]', message.direction === 'outbound' ? 'text-panel-ivory/70' : 'text-muted-foreground')}>
+                          {formatTimestamp(message.sentAt, true)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )) : (
-                  <div className="grid place-items-center rounded-[1.4rem] border border-dashed border-border/80 bg-background/70 px-6 py-10 text-center text-sm text-muted-foreground">
-                    Esta conversacion todavia no tiene mensajes visibles.
-                  </div>
-                )}
+                  )) : (
+                    <div className="grid place-items-center rounded-[1.4rem] border border-dashed border-border/80 bg-background/70 px-6 py-10 text-center text-sm text-muted-foreground">
+                      Esta conversacion todavia no tiene mensajes visibles.
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           ) : (

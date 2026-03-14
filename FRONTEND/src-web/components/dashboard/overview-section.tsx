@@ -120,17 +120,18 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
               { icon: RadioTower, label: "Conexion WhatsApp", value: whatsappState, detail: sessionUser.email },
               { icon: CalendarClock, label: "Citas para hoy", value: String(todaysAppointments.length), detail: `${pendingAppointments.length} activas o por confirmar` },
               { icon: PackageSearch, label: "Productos visibles", value: String(productsCount), detail: "Catalogo activo para respuestas" },
-              { icon: Activity, label: "Automatizaciones activas", value: String(activeAutomations), detail: locationEnabled ? "Ubicacion habilitada" : "Ubicacion aun inactiva" },
+              { icon: Activity, label: "Flujos activos", value: String(activeAutomations), detail: locationEnabled ? "Ubicacion habilitada" : "Ubicacion aun inactiva" },
             ].map((item) => {
+              const isWhatsappCard = item.label === "Conexion WhatsApp";
               const Icon = item.icon;
               return (
                 <div key={item.label} className="rounded-lg border border-border px-4 py-4">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <div className="flex min-w-0 items-center gap-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
                     <Icon className="h-3.5 w-3.5" />
-                    {item.label}
+                    <span className="min-w-0 break-words leading-4">{item.label}</span>
                   </div>
-                  <p className="mt-3 text-2xl font-semibold text-panel-ink">{item.value}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
+                  <p className={isWhatsappCard ? "mt-3 min-w-0 break-words text-2xl font-semibold leading-tight text-panel-ink" : "mt-3 text-2xl font-semibold text-panel-ink"}>{item.value}</p>
+                  <p className={isWhatsappCard ? "mt-2 min-w-0 break-all text-sm leading-5 text-muted-foreground" : "mt-2 text-sm text-muted-foreground"}>{item.detail}</p>
                 </div>
               );
             })}
@@ -224,3 +225,4 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
     </section>
   );
 }
+
