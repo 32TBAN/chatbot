@@ -129,14 +129,14 @@ async function requestAppointments<T>(path: string, token: string, init?: Reques
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
     return {
       ok: false,
       code: "network_error",
-      message: "No se pudo conectar con el backend para las citas.",
+      message: "No pudimos cargar las citas en este momento.",
     };
   }
 }

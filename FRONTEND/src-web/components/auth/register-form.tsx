@@ -21,11 +21,11 @@ export function RegisterForm({
 }) {
   return (
     <form className="mt-6 grid gap-5 sm:grid-cols-2" onSubmit={onSubmit}>
-      <Field error={errors.name} icon={UserRound} label="Nombre" value={values.name}>
+      <Field error={errors.name} icon={UserRound} label="Tu nombre" value={values.name}>
         <Input
           disabled={authBusy}
           onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
-          placeholder="Tu nombre"
+          placeholder="Como quieres que te llamemos"
           value={values.name}
         />
       </Field>
@@ -37,7 +37,7 @@ export function RegisterForm({
           value={values.phone}
         />
       </Field>
-      <Field className="sm:col-span-2" error={errors.email} icon={Mail} label="Email" value={values.email}>
+      <Field className="sm:col-span-2" error={errors.email} icon={Mail} label="Correo" value={values.email}>
         <Input
           autoComplete="email"
           disabled={authBusy}
@@ -59,14 +59,14 @@ export function RegisterForm({
       <Field
         error={errors.confirmPassword}
         icon={ShieldCheck}
-        label="Confirmar contrasena"
+        label="Repite tu contrasena"
         value={values.confirmPassword}
       >
         <Input
           autoComplete="new-password"
           disabled={authBusy}
           onChange={(event) => onChange((current) => ({ ...current, confirmPassword: event.target.value }))}
-          placeholder="Repite la contrasena"
+          placeholder="Vuelve a escribirla"
           type="password"
           value={values.confirmPassword}
         />
@@ -74,7 +74,7 @@ export function RegisterForm({
       <div className="sm:col-span-2">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button className="text-left text-sm text-panel-ink underline-offset-4 hover:underline" onClick={onRecoverExisting} type="button">
-            Si el correo ya existe, recuperar acceso
+            Ya tienes cuenta? Entra aqui
           </button>
           <Button disabled={authBusy} type="submit">
             {authBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}

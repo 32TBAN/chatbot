@@ -223,7 +223,7 @@ export function AppointmentsSection() {
       <Card className="border-border/80 bg-card shadow-[0_18px_60px_rgba(18,25,36,0.06)]">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <CardDescription>Agenda operativa</CardDescription>
+            <CardDescription>Tu agenda del dia</CardDescription>
             <CardTitle>Tablero de citas por estado</CardTitle>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -256,7 +256,7 @@ export function AppointmentsSection() {
             <div className="grid gap-3 rounded-[1.25rem] border border-dashed border-border/80 bg-background/75 px-5 py-10 text-center">
               <CalendarClock className="mx-auto h-8 w-8 text-muted-foreground" />
               <div>
-                <p className="font-medium text-panel-ink">Aun no hay citas registradas</p>
+                <p className="font-medium text-panel-ink">Todavia no tienes citas registradas</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Cuando los clientes empiecen a reservar, apareceran aqui para organizarlas por estado.
                 </p>

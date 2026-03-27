@@ -4,7 +4,6 @@ import { pageTitles } from "@/data/dashboard";
 import { AppointmentsSection } from "@/components/dashboard/appointments-section";
 import { AutomationsSection } from "@/components/dashboard/automations-section";
 import { CatalogSection } from "@/components/dashboard/catalog-section";
-import { DebugSection } from "@/components/dashboard/debug-section";
 import { HistorySection } from "@/components/dashboard/history-section";
 import { OverviewSection } from "@/components/dashboard/overview-section";
 import { QrSection } from "@/components/dashboard/qr-section";
@@ -16,7 +15,7 @@ import type { ViewId } from "@/types/dashboard";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const BLOCKED_MESSAGE = "Completa el perfil del negocio para desbloquear el resto del panel.";
+const BLOCKED_MESSAGE = "Completa los datos de tu negocio para abrir el resto de herramientas.";
 
 export function DashboardPage() {
   const { logoutBusy, performLogout, sessionUser } = useAuth();
@@ -25,18 +24,12 @@ export function DashboardPage() {
   const [blockedNotice, setBlockedNotice] = useState<string | null>(null);
   const [focusFormSignal, setFocusFormSignal] = useState(0);
   const setupIncomplete = !sessionUser?.businessId || !sessionUser?.business?.name?.trim();
-  const isOwner = sessionUser?.role === "owner";
 
   useEffect(() => {
     if (setupIncomplete && activeView !== "settings") {
       setActiveView("settings");
-      return;
     }
-
-    if (!setupIncomplete && activeView === "debug" && !isOwner) {
-      setActiveView("overview");
-    }
-  }, [activeView, isOwner, setupIncomplete]);
+  }, [activeView, setupIncomplete]);
 
   if (!sessionUser) return null;
 
@@ -44,13 +37,6 @@ export function DashboardPage() {
     if (setupIncomplete && id !== "settings") {
       setActiveView("settings");
       setBlockedNotice(BLOCKED_MESSAGE);
-      setMenuOpen(false);
-      return;
-    }
-
-    if (id === "debug" && !isOwner) {
-      setActiveView("overview");
-      setBlockedNotice("Solo el owner del negocio puede usar Debug.");
       setMenuOpen(false);
       return;
     }
@@ -86,7 +72,6 @@ export function DashboardPage() {
           <Sidebar
             activeView={activeView}
             onNavigate={handleNavigate}
-            sessionUser={sessionUser}
             setupIncomplete={setupIncomplete}
           />
         </aside>
@@ -116,16 +101,16 @@ export function DashboardPage() {
                     <AlertTriangle className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-panel-ink/70">Operacion restringida</p>
-                    <p className="mt-1 text-sm font-medium">Falta registrar el negocio para habilitar el MVP completo.</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-panel-ink/70">Falta un paso</p>
+                    <p className="mt-1 text-sm font-medium">Completa la informacion de tu negocio para empezar a usar WhatsFlow.</p>
                     <p className="mt-1 text-sm text-panel-ink/75">
-                      Solo `Configuracion` esta disponible hasta completar el perfil base del negocio.
+                      Por ahora solo esta disponible la seccion `Tu negocio` para terminar la configuracion inicial.
                     </p>
                     {blockedNotice ? <p className="mt-2 text-sm text-panel-ink/75">{blockedNotice}</p> : null}
                   </div>
                 </div>
                 <Button onClick={handleGoToSettingsForm} variant="secondary">
-                  Ir a configuracion
+                  Completar negocio
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -163,7 +148,6 @@ export function DashboardPage() {
                   setupIncomplete={setupIncomplete}
                 />
               ) : null}
-              {activeView === "debug" ? <DebugSection isOwner={isOwner} /> : null}
             </div>
           </div>
         </main>

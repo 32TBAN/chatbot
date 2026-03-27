@@ -19,7 +19,7 @@ function formatDateTime(date: string, time: string) {
   const timePart = Number.isNaN(timeValue.getTime())
     ? time
     : new Intl.DateTimeFormat("es-EC", { hour: "2-digit", minute: "2-digit", hour12: false }).format(timeValue);
-  return `${datePart} Â· ${timePart}`;
+  return `${datePart} Ã‚Â· ${timePart}`;
 }
 
 export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
@@ -41,7 +41,7 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
       if (!token) {
         if (!active) return;
         setLoading(false);
-        setError("No hay una sesion activa para cargar el resumen.");
+        setError("Entra de nuevo para ver el resumen de tu negocio.");
         return;
       }
 
@@ -62,7 +62,7 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
       }
 
       if (!appointmentsResult.ok || !conversationsResult.ok || !productsResult.ok || !automationResult.ok || !sessionResult.ok) {
-        setError("No se pudo cargar el resumen real del negocio.");
+        setError("No pudimos cargar el resumen de tu negocio.");
         setLoading(false);
         return;
       }
@@ -101,7 +101,7 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
       <Card className="border-border/80 bg-card shadow-[0_18px_60px_rgba(18,25,36,0.06)]">
         <CardContent className="flex min-h-[280px] items-center justify-center gap-3 text-muted-foreground">
           <LoaderCircle className="h-5 w-5 animate-spin" />
-          <span>Cargando resumen real del negocio...</span>
+          <span>Cargando el resumen de tu negocio...</span>
         </CardContent>
       </Card>
     );
@@ -119,8 +119,8 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
             {[
               { icon: RadioTower, label: "Conexion WhatsApp", value: whatsappState, detail: sessionUser.email },
               { icon: CalendarClock, label: "Citas para hoy", value: String(todaysAppointments.length), detail: `${pendingAppointments.length} activas o por confirmar` },
-              { icon: PackageSearch, label: "Productos visibles", value: String(productsCount), detail: "Catalogo activo para respuestas" },
-              { icon: Activity, label: "Flujos activos", value: String(activeAutomations), detail: locationEnabled ? "Ubicacion habilitada" : "Ubicacion aun inactiva" },
+              { icon: PackageSearch, label: "Productos visibles", value: String(productsCount), detail: "Listo para compartir por WhatsApp" },
+              { icon: Activity, label: "Flujos activos", value: String(activeAutomations), detail: locationEnabled ? "Ubicacion lista para compartir" : "Ubicacion todavia inactiva" },
             ].map((item) => {
               const isWhatsappCard = item.label === "Conexion WhatsApp";
               const Icon = item.icon;
@@ -165,7 +165,7 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
               </div>
             )) : (
               <div className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-                Aun no hay citas activas para mostrar.
+                Todavia no tienes citas activas para mostrar.
               </div>
             )}
           </CardContent>
@@ -188,7 +188,7 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
               <p className="mt-2 text-2xl font-semibold text-panel-ink">{conversations.length}</p>
             </div>
             <div className="rounded-lg border border-border px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Cobertura operativa</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Actividad reciente</p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {locationEnabled
                   ? "El bot ya puede compartir la ubicacion configurada del negocio."
@@ -216,7 +216,7 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
               </div>
             )) : (
               <div className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-                Todavia no hay mensajes reales registrados.
+                Todavia no tienes mensajes guardados.
               </div>
             )}
           </CardContent>
@@ -225,4 +225,12 @@ export function OverviewSection({ sessionUser }: { sessionUser: AuthUser }) {
     </section>
   );
 }
+
+
+
+
+
+
+
+
 

@@ -212,7 +212,7 @@ export function CatalogSection() {
             <div className="grid gap-3 rounded-[1.25rem] border border-dashed border-border/80 bg-background/75 px-5 py-8 text-center">
               <PackageSearch className="mx-auto h-8 w-8 text-muted-foreground" />
               <div>
-                <p className="font-medium text-panel-ink">Aun no hay productos configurados</p>
+                <p className="font-medium text-panel-ink">Todavia no has agregado productos</p>
                 <p className="mt-1 text-sm text-muted-foreground">Crea productos aqui para que el bot pueda enviarlos con texto e imagen o video.</p>
               </div>
             </div>
@@ -281,7 +281,7 @@ export function CatalogSection() {
                 </div>
                 <Input accept="image/*,video/*" disabled={uploadingId === item.id} onChange={(event) => void handleMediaUpload(item, event.target.files?.[0] ?? null)} type="file" />
                 <p className="text-xs text-muted-foreground">
-                  {uploadingId === item.id ? "Subiendo media..." : item.mediaFilename ? `Archivo actual: ${item.mediaFilename}` : "Aun no hay media cargada."}
+                  {uploadingId === item.id ? "Subiendo media..." : item.mediaFilename ? `Archivo actual: ${item.mediaFilename}` : "Todavia no has subido un archivo."}
                 </p>
                 <div className="overflow-hidden rounded-2xl border border-border bg-muted/20">
                   {item.mediaUrl ? item.mediaType === "video" ? (
@@ -305,4 +305,6 @@ export function CatalogSection() {
     </section>
   );
 }
+
+
 

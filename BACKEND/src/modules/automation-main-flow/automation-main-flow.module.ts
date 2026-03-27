@@ -400,6 +400,9 @@ class AutomationMainFlowService {
       }
 
       return ensuredFlowId;
+    }, {
+      maxWait: AUTOMATION_FLOW_TRANSACTION_MAX_WAIT_MS,
+      timeout: AUTOMATION_FLOW_TRANSACTION_TIMEOUT_MS,
     });
 
     const flow = await this.findMainFlowById(flowId);
@@ -651,3 +654,4 @@ class AutomationMainFlowController {
   providers: [AutomationMainFlowService],
 })
 export class AutomationMainFlowModule {}
+

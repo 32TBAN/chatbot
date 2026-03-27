@@ -681,7 +681,7 @@ export class WhatsappAutomationService {
         return { ...existingCustomer, name: customerName.trim() };
       }
 
-      if (source === 'debug' && existingCustomer.source !== 'debug') {
+      if (source === 'preview' && existingCustomer.source !== 'preview') {
         await this.prisma.customer.update({
           where: { id: existingCustomer.id },
           data: {
@@ -716,5 +716,6 @@ export class WhatsappAutomationService {
     });
   }
 }
+
 
 

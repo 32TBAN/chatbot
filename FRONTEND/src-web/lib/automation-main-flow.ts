@@ -84,7 +84,7 @@ async function requestAutomationMainFlow(
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
@@ -92,7 +92,7 @@ async function requestAutomationMainFlow(
       return {
         ok: false,
         code: "network_error",
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos cargar esta informacion en este momento. Intenta otra vez.",
       };
     }
 

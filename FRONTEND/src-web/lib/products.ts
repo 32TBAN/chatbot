@@ -86,14 +86,14 @@ async function requestProducts<T>(path: string, token: string, init?: RequestIni
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
     return {
       ok: false,
       code: "network_error",
-      message: "No se pudo conectar con el backend para el catalogo.",
+      message: "No pudimos cargar el catalogo en este momento.",
     };
   }
 }
@@ -133,3 +133,4 @@ export function uploadProductMedia(token: string, id: string, file: File) {
     body: formData,
   }).then((result) => (result.ok ? { ok: true as const, data: mapProduct(result.data) } : result));
 }
+

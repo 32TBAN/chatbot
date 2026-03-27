@@ -5,7 +5,7 @@ import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { WhatsappSessionsService } from './whatsapp-sessions.service';
 
-class DebugInboundDto {
+class PreviewInboundDto {
   @IsString()
   content!: string;
 
@@ -40,8 +40,8 @@ export class WhatsappSessionsController {
     return this.whatsappSessionsService.logout(user);
   }
 
-  @Post('debug/inbound')
-  debugInbound(@CurrentUser() user: AuthenticatedUser, @Body() dto: DebugInboundDto) {
-    return this.whatsappSessionsService.simulateInboundDebug(user, dto.content);
+  @Post('preview/inbound')
+  previewInbound(@CurrentUser() user: AuthenticatedUser, @Body() dto: PreviewInboundDto) {
+    return this.whatsappSessionsService.simulateInboundPreview(user, dto.content);
   }
 }

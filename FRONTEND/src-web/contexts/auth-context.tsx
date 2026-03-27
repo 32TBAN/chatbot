@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const submitLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (Object.values(loginErrors).some(Boolean)) {
-      setAuthStatus({ tone: "error", message: "Revisa el email y la contrasena antes de continuar." });
+      setAuthStatus({ tone: "error", message: "Revisa tu correo y tu contrasena antes de continuar." });
       return;
     }
 
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const submitRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (Object.values(registerErrors).some(Boolean)) {
-      setAuthStatus({ tone: "error", message: "Revisa los datos del registro antes de continuar." });
+      setAuthStatus({ tone: "error", message: "Revisa tus datos antes de crear la cuenta." });
       return;
     }
 
@@ -136,10 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoginValues((current) => ({ ...current, email: result.email, password: "" }));
     setRegisterValues((current) => ({ ...current, password: "", confirmPassword: "" }));
     setAuthMode("login");
-    setAuthStatus({ tone: "success", message: "Cuenta creada. Inicia sesion para continuar." });
+    setAuthStatus({ tone: "success", message: "Tu cuenta esta lista. Ahora entra para continuar." });
   };
 
-  const invalidateSession = async (message = "Tu sesion expiro o ya no es valida. Inicia sesion nuevamente.") => {
+  const invalidateSession = async (message = "Tu sesion vencio. Vuelve a entrar para seguir usando WhatsFlow.") => {
     setLogoutBusy(true);
     await logout();
     setLogoutBusy(false);
@@ -149,8 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const performLogout = async () => {
-    await invalidateSession("La sesion se cerro correctamente.");
-    setAuthStatus({ tone: "neutral", message: "La sesion se cerro correctamente." });
+    await invalidateSession("Saliste de tu cuenta correctamente.");
+    setAuthStatus({ tone: "neutral", message: "Saliste de tu cuenta correctamente." });
   };
 
   return (

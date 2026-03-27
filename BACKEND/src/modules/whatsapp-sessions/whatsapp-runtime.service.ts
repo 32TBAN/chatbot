@@ -31,7 +31,7 @@ const qrCodeModule = require('qrcode') as {
   toDataURL: (value: string) => Promise<string>;
 };
 
-const DEBUG_CHAT_SUFFIX = '@debug.local';
+const PREVIEW_CHAT_SUFFIX = '@preview.local';
 const WHATSAPP_PROTOCOL_TIMEOUT_MS = 120_000;
 
 @Injectable()
@@ -182,20 +182,20 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async simulateInboundDebug(session: WhatsappSession, content: string) {
+  async simulateInboundPreview(session: WhatsappSession, content: string) {
     if (session.status !== WhatsappSessionStatus.connected || !this.isRuntimeActive(session.businessId)) {
       throw new BadRequestException('La sesion de WhatsApp debe estar conectada para ejecutar pruebas.');
     }
 
-    const phone = this.resolveDebugPhone(session.phoneNumber);
+    const phone = this.resolvePreviewPhone(session.phoneNumber);
     return this.automation.processInboundMessage({
       businessId: session.businessId,
       sessionId: session.id,
       phone,
       inboundContent: content.trim(),
       messageType: MessageType.text,
-      customerName: 'Prueba Debug WhatsApp',
-      customerSource: 'debug',
+      customerName: 'Prueba Preview WhatsApp',
+      customerSource: 'preview',
       sentAt: new Date(),
     });
   }
@@ -242,9 +242,7 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
       });
 
       if (restoring && this.isProtocolTimeoutError(error)) {
-        this.logger.warn(
-          WhatsApp restore timed out for business . Leaving session ready for manual reactivation.,
-        );
+        this.logger.warn('WhatsApp restore timed out for business ' + session.businessId + '. Leaving session ready for manual reactivation.');
         return;
       }
 
@@ -523,7 +521,7 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     await fs.rm(sessionPath, { force: true, recursive: true });
   }
 
-  private resolveDebugPhone(phoneNumber: string | null) {
+  private resolvePreviewPhone(phoneNumber: string | null) {
     const sanitized = phoneNumber?.replace(/\D+/g, '') || '593000000000';
     const suffix = sanitized.slice(-8).padStart(8, '0');
     return `+999${suffix}`;
@@ -539,4 +537,8 @@ export class WhatsappRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
+
+
+
+
 

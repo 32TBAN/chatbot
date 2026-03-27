@@ -2,22 +2,17 @@ import { ChevronRight, Lock, Workflow } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { navItems } from "@/data/dashboard";
 import { cn } from "@/lib/utils";
-import type { AuthUser } from "@/types/auth";
 import type { ViewId } from "@/types/dashboard";
 
 export function Sidebar({
   activeView,
   onNavigate,
-  sessionUser,
   setupIncomplete,
 }: {
   activeView: ViewId;
   onNavigate: (id: ViewId) => void;
-  sessionUser: AuthUser;
   setupIncomplete: boolean;
 }) {
-  const visibleItems = navItems.filter((item) => item.id !== "debug" || sessionUser.role === "owner");
-
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border px-5 py-5">
@@ -27,14 +22,14 @@ export function Sidebar({
           </div>
           <div>
             <p className="font-display text-xl uppercase tracking-[0.16em] text-panel-ink">WhatsFlow</p>
-            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Panel operativo</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Tu centro de atencion</p>
           </div>
         </div>
       </div>
 
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-1.5">
-          {visibleItems.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
             const isLocked = setupIncomplete && item.id !== "settings";

@@ -1,7 +1,6 @@
 import {
   Activity,
   Bot,
-  Bug,
   CalendarClock,
   MessageSquareShare,
   PackageSearch,
@@ -15,44 +14,38 @@ export const navItems: readonly NavItem[] = [
   { id: "overview", label: "Resumen", shortLabel: "Resumen", icon: Activity },
   {
     id: "automations",
-    label: "Automatizaciones",
-    shortLabel: "Automatiz.",
+    label: "Respuestas automaticas",
+    shortLabel: "Respuestas",
     icon: Bot,
   },
-  { id: "qr", label: "Conexion QR", shortLabel: "QR", icon: QrCode },
+  { id: "qr", label: "Conectar WhatsApp", shortLabel: "WhatsApp", icon: QrCode },
   { id: "appointments", label: "Citas", shortLabel: "Citas", icon: CalendarClock },
   { id: "catalog", label: "Catalogo", shortLabel: "Catalogo", icon: PackageSearch },
   {
     id: "history",
-    label: "Historial",
+    label: "Conversaciones",
     shortLabel: "Historial",
     icon: MessageSquareShare,
   },
   {
     id: "settings",
-    label: "Configuracion",
-    shortLabel: "Config",
+    label: "Tu negocio",
+    shortLabel: "Negocio",
     icon: ShieldCheck,
-  },
-  {
-    id: "debug",
-    label: "Debug",
-    shortLabel: "Debug",
-    icon: Bug,
   },
 ] as const;
 
 export const statusCards = [
   {
-    label: "Conexion WhatsApp",
+    label: "WhatsApp conectado",
     value: "Activa",
-    detail: "Sesion enlazada hace 4 min",
+    detail: "Todo listo para seguir atendiendo",
     tone: "success" as const,
   },
   {
-    label: "Flujos activos",
+    label: "Respuestas activas",
     value: "12",
-    detail: "3 requieren revision",
+    detail: "3 necesitan revision",
     tone: "warning" as const,
   },
   {
@@ -70,11 +63,11 @@ export const statusCards = [
 ] as const;
 
 export const onboardingSteps = [
-  { title: "Conectar numero principal", detail: "QR verificado y sesion persistente", done: true },
-  { title: "Configurar bienvenida", detail: "Mensaje activo en la primera respuesta", done: true },
-  { title: "Publicar primer flujo", detail: "Reservas y soporte basico activos", done: true },
-  { title: "Definir horarios", detail: "Faltan bloques de sabado", done: false },
-  { title: "Cargar catalogo base", detail: "3 productos aun sin visibilidad", done: false },
+  { title: "Conecta tu numero principal", detail: "QR escaneado y WhatsApp listo", done: true },
+  { title: "Activa tu bienvenida", detail: "Tu primer mensaje ya responde solo", done: true },
+  { title: "Publica tu primer flujo", detail: "Reservas y preguntas frecuentes activas", done: true },
+  { title: "Define tus horarios", detail: "Todavia faltan los bloques del sabado", done: false },
+  { title: "Carga tu catalogo base", detail: "Hay 3 productos aun sin publicar", done: false },
 ] as const;
 
 export const automations = [
@@ -83,27 +76,27 @@ export const automations = [
     status: "Activa",
     trigger: "Cliente escribe reservar o cita",
     condition: "Horario laboral y cupos disponibles",
-    action: "Ofrecer bloques del dia y capturar datos",
+    action: "Ofrecer horarios del dia y pedir los datos",
     result: "Cita creada con confirmacion automatica",
-    volume: "24 ejecuciones hoy",
+    volume: "24 usos hoy",
   },
   {
     name: "Consulta de productos",
     status: "Revision",
     trigger: "Cliente pregunta precio, catalogo o stock",
     condition: "Categoria detectada por palabra clave",
-    action: "Enviar ficha breve y CTA a asesor",
-    result: "Producto mostrado y lead etiquetado",
-    volume: "17 ejecuciones hoy",
+    action: "Enviar una ficha breve y pasar a un asesor si hace falta",
+    result: "Producto mostrado y cliente identificado",
+    volume: "17 usos hoy",
   },
   {
-    name: "Desvio a soporte",
+    name: "Ayuda y soporte",
     status: "Activa",
-    trigger: "Cliente reporta falla o soporte",
-    condition: "Falla repetida o tono de urgencia",
-    action: "Recopilar problema y escalar a operador",
-    result: "Ticket interno y respuesta de espera",
-    volume: "6 ejecuciones hoy",
+    trigger: "Cliente reporta un problema o pide ayuda",
+    condition: "Urgencia detectada o consulta repetida",
+    action: "Pedir contexto y avisar al responsable",
+    result: "Caso registrado y respuesta de seguimiento",
+    volume: "6 usos hoy",
   },
 ] as const;
 
@@ -111,7 +104,7 @@ export const appointments = [
   { time: "09:00", client: "Carlos Mena", reason: "Demo de automatizacion", state: "Confirmada" },
   { time: "10:30", client: "Farmacia Norte", reason: "Ajuste de horarios", state: "Pendiente" },
   { time: "14:00", client: "Pamela Ruiz", reason: "Catalogo de productos", state: "Confirmada" },
-  { time: "16:00", client: "Tienda Delta", reason: "Capacitacion operador", state: "Pendiente" },
+  { time: "16:00", client: "Tienda Delta", reason: "Capacitacion del equipo", state: "Pendiente" },
 ] as const;
 
 export const catalogItems = [
@@ -132,122 +125,116 @@ export const interactions = [
     customer: "Comercial Rios",
     reason: "Consulta de stock",
     automation: "Consulta de productos",
-    outcome: "Lead enviado a operador",
+    outcome: "Consulta enviada a un asesor",
     time: "Hace 16 min",
   },
   {
     customer: "Jorge Molina",
     reason: "Soporte tecnico",
-    automation: "Desvio a soporte",
-    outcome: "Ticket escalado",
+    automation: "Ayuda y soporte",
+    outcome: "Caso derivado",
     time: "Hace 34 min",
   },
 ] as const;
 
 export const metrics = [
   { label: "Respuestas automaticas", value: "68%", change: "+4%" },
-  { label: "Tiempo a operador", value: "2m 10s", change: "-18s" },
+  { label: "Tiempo hasta un asesor", value: "2m 10s", change: "-18s" },
   { label: "Conversion a cita", value: "21%", change: "+3%" },
 ] as const;
 
 export const teamSnapshot = [
-  { name: "Admin principal", role: "Owner", coverage: "Configuracion general" },
+  { name: "Admin principal", role: "Owner", coverage: "Vista general del negocio" },
   { name: "Laura P.", role: "Operadora", coverage: "Citas y soporte" },
   { name: "Marco T.", role: "Operador", coverage: "Catalogo y ventas" },
 ] as const;
 
 export const headerStats = [
   { label: "Numero conectado", value: "+593 99 431 2281" },
-  { label: "Plantillas activas", value: "12" },
-  { label: "Registros hoy", value: "14" },
-  { label: "Operadores", value: `${teamSnapshot.length}` },
+  { label: "Respuestas activas", value: "12" },
+  { label: "Contactos hoy", value: "14" },
+  { label: "Personas del equipo", value: `${teamSnapshot.length}` },
 ] as const;
 
 export const pageTitles = {
   overview: {
-    eyebrow: "Centro de operaciones",
-    title: "Estado operativo del negocio",
+    eyebrow: "Tu negocio hoy",
+    title: "Asi va tu atencion por WhatsApp",
     description:
-      "Controla conexion, flujos, agenda y trazabilidad desde un solo panel.",
+      "Mira rapidamente si tu numero esta conectado, como van tus respuestas y que necesita atencion hoy.",
   },
   automations: {
-    eyebrow: "Automatizaciones",
-    title: "Flujos activos e intervenciones",
+    eyebrow: "Respuestas automaticas",
+    title: "Configura como responde tu negocio",
     description:
-      "Cada bloque conecta la intencion del cliente con una accion del negocio.",
+      "Crea mensajes utiles para las preguntas mas comunes y prueba como responderia tu negocio.",
   },
   qr: {
-    eyebrow: "Canal conectado",
-    title: "Sesion WhatsApp y estado del enlace",
+    eyebrow: "Conecta tu numero",
+    title: "Estado de tu WhatsApp",
     description:
-      "Monitorea la sesion, reconecta rapido y evita caidas en la operacion.",
+      "Escanea el QR, revisa si tu numero sigue conectado y vuelve a enlazarlo cuando haga falta.",
   },
   appointments: {
-    eyebrow: "Agenda operativa",
-    title: "Horarios y confirmaciones",
+    eyebrow: "Agenda",
+    title: "Ordena tus citas del dia",
     description:
-      "Organiza bloques de atencion y detecta fricciones antes de afectar la agenda.",
+      "Confirma horarios, mueve pendientes y evita que se te pase una reserva importante.",
   },
   catalog: {
-    eyebrow: "Catalogo utilitario",
-    title: "Productos visibles para ventas",
+    eyebrow: "Catalogo",
+    title: "Muestra lo que vendes",
     description:
-      "Gestiona fichas, visibilidad y relacion con las automatizaciones.",
+      "Organiza tus productos o servicios para responder mas rapido cuando un cliente pregunte.",
   },
   history: {
-    eyebrow: "Trazabilidad",
-    title: "Interacciones recientes",
+    eyebrow: "Conversaciones",
+    title: "Revisa lo ultimo que hablaron tus clientes",
     description:
-      "Sigue lo ocurrido, el flujo activado y si hubo intervencion manual.",
+      "Consulta mensajes recientes, respuestas del bot y conversaciones que necesitan seguimiento.",
   },
   settings: {
-    eyebrow: "Configuracion base",
-    title: "Reglas y parametros generales",
+    eyebrow: "Tu negocio",
+    title: "Prepara la base de tu cuenta",
     description:
-      "Define horarios, mensajes base y responsables sin volver pesado el panel.",
-  },
-  debug: {
-    eyebrow: "Pruebas controladas",
-    title: "Debug de mensajes del bot",
-    description:
-      "Simula un inbound desde el panel antes de usar el canal real.",
+      "Completa los datos principales, horarios y mensajes base para que todo funcione mejor desde el inicio.",
   },
 };
 
 export const settingsGroups = [
-  { title: "Perfil del negocio", detail: "Nombre comercial, zona horaria y canal principal" },
-  { title: "Horarios de atencion", detail: "Bloques activos y dias no laborables" },
-  { title: "Mensaje de bienvenida", detail: "Primer contacto y expectativa de respuesta" },
-  { title: "Roles operativos", detail: "Acceso a citas, catalogo y soporte" },
+  { title: "Datos del negocio", detail: "Nombre, contacto y datos principales" },
+  { title: "Horarios de atencion", detail: "Dias y horas en las que respondes" },
+  { title: "Mensaje de bienvenida", detail: "Primer mensaje que recibe tu cliente" },
+  { title: "Accesos del equipo", detail: "Quien ve citas, catalogo y conversaciones" },
 ] as const;
 
 export const overviewHighlights = [
   {
-    title: "Operacion estable",
-    text: "WhatsApp conectado, flujos principales activos y cola sin incidentes criticos.",
+    title: "Todo bajo control",
+    text: "Tu WhatsApp esta conectado, las respuestas principales siguen activas y no hay alertas urgentes.",
   },
   {
-    title: "Puntos de revision",
-    text: "El flujo de productos requiere mejor cobertura para stock y promociones.",
+    title: "Oportunidades de mejora",
+    text: "Tu flujo de productos todavia puede responder mejor sobre stock y promociones.",
   },
 ] as const;
 
 export const qrStats = [
-  { label: "Estado", value: "Sesion activa" },
-  { label: "Ultima sincronizacion", value: "09 Mar 2026, 08:46" },
-  { label: "Dispositivo", value: "Samsung Business A54" },
-  { label: "Fallback manual", value: "Disponible" },
+  { label: "Estado", value: "WhatsApp activo" },
+  { label: "Ultima revision", value: "09 Mar 2026, 08:46" },
+  { label: "Telefono", value: "Samsung Business A54" },
+  { label: "Reconectar", value: "Disponible" },
 ] as const;
 
 export const automationHealth = [
-  { label: "Cobertura FAQ", value: 78 },
-  { label: "Reserva automatizada", value: 91 },
-  { label: "Catalogo consultable", value: 63 },
+  { label: "Preguntas frecuentes cubiertas", value: 78 },
+  { label: "Reservas automatizadas", value: 91 },
+  { label: "Catalogo listo para consultar", value: 63 },
 ] as const;
 
 export const overviewActions = [
-  "Editar flujo de reservas",
-  "Completar horarios sabado",
+  "Mejorar el flujo de reservas",
+  "Completar horarios del sabado",
   "Publicar productos ocultos",
 ] as const;
 

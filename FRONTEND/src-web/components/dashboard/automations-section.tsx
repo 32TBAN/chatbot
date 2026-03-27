@@ -25,6 +25,12 @@ import {
   type MenuOptionView,
   type QuickAutomationView,
 } from "@/lib/automation-main-flow";
+import {
+  getWhatsappSession,
+  simulateWhatsappPreviewInbound,
+  type PreviewConversationResult,
+  type WhatsappSessionView,
+} from "@/lib/whatsapp-session";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,13 +50,6 @@ import { cn } from "@/lib/utils";
 
 const quickOrder: AutomationKey[] = ["welcome", "menu", "appointments", "products", "location", "support"];
 type SectionTab = "quick" | "menu" | "keywords";
-type PreviewMessage = {
-  id: string;
-  menuOptions?: MenuOptionView[];
-  role: "bot" | "user";
-  text: string;
-};
-
 const sectionTabs: Array<{ id: SectionTab; label: string; icon: typeof Wand2 }> = [
   { id: "quick", label: "Automatizaciones rapidas", icon: Wand2 },
   { id: "menu", label: "Menu principal", icon: LayoutTemplate },
@@ -159,13 +158,6 @@ function normalizeFlow(flow: AutomationMainFlowView) {
   });
 }
 
-function normalizeText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
 export function AutomationsSection() {
   const { getAccessToken } = useAuth();
   const [serverSnapshot, setServerSnapshot] = useState<AutomationMainFlowView | null>(null);
@@ -212,7 +204,6 @@ export function AutomationsSection() {
 
   const dirty = serverSnapshot ? normalizeFlow(serverSnapshot) !== normalizeFlow(draft) : false;
   const menuTargets = draft.nodeRegistry.filter((item) => item.key !== "welcome" && item.key !== "menu");
-  const previewMenu = draft.menu.options.filter((item) => item.label.trim());
   const editingAutomation = editingKey ? draft.quickAutomations.find((item) => item.key === editingKey) ?? null : null;
 
   const setQuickAutomation = (key: AutomationKey, update: Partial<QuickAutomationView>) => {
@@ -327,7 +318,7 @@ export function AutomationsSection() {
                   </div>
                   <div className="mt-5 rounded-2xl border border-border/70 bg-background/85 px-4 py-3">
                     <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Resumen del mensaje</p>
-                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-panel-ink">{item.message?.trim() || "Todavia no hay un mensaje configurado para esta automatizacion."}</p>
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-panel-ink">{item.message?.trim() || "Todavia no has definido un mensaje para esta respuesta."}</p>
                   </div>
                   <div className="mt-4 flex items-center justify-between text-sm text-panel-ink">
                     <span className="inline-flex items-center gap-2 text-muted-foreground"><Sparkles className="h-4 w-4" />Editar automatizacion</span>
@@ -386,14 +377,10 @@ export function AutomationsSection() {
           </Card>
         ) : null}
       </div>
-
       <FloatingChatPreview
         collapsed={isPreviewCollapsed}
-        keywords={draft.keywords}
-        menuMessage={draft.menu.message}
+        dirty={dirty}
         onToggle={() => setIsPreviewCollapsed((current) => !current)}
-        previewMenu={previewMenu}
-        quickAutomations={draft.quickAutomations}
       />
 
       <Dialog onOpenChange={(open) => !open && setEditingKey(null)} open={Boolean(editingAutomation)}>
@@ -412,7 +399,7 @@ export function AutomationsSection() {
               <DialogBody>
                 <div className="rounded-2xl border border-border bg-[linear-gradient(180deg,rgba(252,249,241,0.95),rgba(243,245,240,0.9))] p-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Automatizacion</p>
-                  <p className="mt-2 text-sm leading-6 text-panel-ink">Edita el mensaje que enviara el bot cuando se active esta respuesta.</p>
+                  <p className="mt-2 text-sm leading-6 text-panel-ink">Edita el mensaje que recibira tu cliente cuando esta respuesta se active.</p>
                 </div>
                 <label className="grid gap-2">
                   <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Mensaje</span>
@@ -429,7 +416,7 @@ export function AutomationsSection() {
                 </label>
                 <div className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-4">
                   <div>
-                    <p className="text-sm font-medium text-panel-ink">Activar automatizacion</p>
+                    <p className="text-sm font-medium text-panel-ink">Activar respuesta automatica</p>
                     <p className="text-sm text-muted-foreground">Puedes apagarla temporalmente sin borrar su contenido.</p>
                   </div>
                   <label className={cn("inline-flex h-7 w-14 items-center overflow-hidden rounded-full border px-1 transition-colors", editingAutomation.enabled ? "border-panel-steel/40 bg-panel-signal" : "border-border bg-muted")}>
@@ -451,126 +438,99 @@ export function AutomationsSection() {
 
 function FloatingChatPreview({
   collapsed,
-  keywords,
-  menuMessage,
+  dirty,
   onToggle,
-  previewMenu,
-  quickAutomations,
 }: {
   collapsed: boolean;
-  keywords: KeywordView[];
-  menuMessage: string;
+  dirty: boolean;
   onToggle: () => void;
-  previewMenu: MenuOptionView[];
-  quickAutomations: QuickAutomationView[];
 }) {
+  const { getAccessToken } = useAuth();
   const [draftMessage, setDraftMessage] = useState("");
-  const [messages, setMessages] = useState<PreviewMessage[]>([]);
+  const [session, setSession] = useState<WhatsappSessionView | null>(null);
+  const [conversation, setConversation] = useState<PreviewConversationResult | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const messagesRef = useRef<HTMLDivElement | null>(null);
-  const fallbackMessage = "No pude detectar una intencion clara. Si quieres, escribe menu para ver las opciones disponibles.";
-  const orderedQuickKeys: AutomationKey[] = ["welcome", "menu", "appointments", "products", "location", "support"];
-  const keywordRules = keywords.filter((item) => item.keyword.trim());
-  const automationMap = new Map(quickAutomations.map((item) => [item.key, item]));
+
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      const token = getAccessToken();
+      if (!token) {
+        if (!active) return;
+        setLoadingSession(false);
+        setError("Entra con una cuenta valida para probar tus respuestas.");
+        return;
+      }
+
+      setLoadingSession(true);
+      const result = await getWhatsappSession(token);
+      if (!active) return;
+
+      if (!result.ok) {
+        setSession(null);
+        setError(result.message);
+      } else {
+        setSession(result.session);
+        setError(null);
+      }
+
+      setLoadingSession(false);
+    };
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [getAccessToken]);
 
   useEffect(() => {
     const node = messagesRef.current;
     if (!node) return;
     node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [conversation]);
 
-  const appendMessages = (nextMessages: Array<Omit<PreviewMessage, "id">>) => {
-    setMessages((current) => [
-      ...current,
-      ...nextMessages.map((item, index) => ({
-        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
-        ...item,
-      })),
-    ]);
+  const isSessionReady = session?.status === "connected" && session.isRuntimeActive;
+
+  const clearPreview = () => {
+    setConversation(null);
+    setDraftMessage("");
+    setError(null);
+    setStatus(null);
   };
 
-  const resolveAutomationMessage = (targetKey: AutomationKey) => {
-    const automation = automationMap.get(targetKey);
-    if (!automation?.enabled) {
-      return null;
-    }
-
-    return automation.message.trim() || `Respuesta pendiente para ${automation.title.toLowerCase()}.`;
-  };
-
-  const containsTrigger = (value: string, triggers: string[]) => {
-    const normalizedValue = normalizeText(value);
-    return triggers.some((trigger) => normalizedValue.includes(normalizeText(trigger)));
-  };
-
-  const uniquePreviewMessages = (items: Array<Omit<PreviewMessage, "id">>) => {
-    const seen = new Set<string>();
-    return items.filter((item) => {
-      if (item.role === "user") return true;
-      const normalized = item.text.trim();
-      if (!normalized || seen.has(normalized)) return false;
-      seen.add(normalized);
-      return true;
-    });
-  };
-
-  const submitPreview = (rawValue: string, displayValue = rawValue.trim()) => {
+  const submitPreview = async (rawValue: string) => {
     const value = rawValue.trim();
     if (!value) return;
 
-    const normalized = normalizeText(value);
-    const selectedByNumber = /^\d+$/.test(normalized) ? previewMenu[Number.parseInt(normalized, 10) - 1] ?? null : null;
-    const selectedByLabel = previewMenu.find((option) => normalizeText(option.label) === normalized) ?? null;
-    const nextMessages: Array<Omit<PreviewMessage, "id">> = [{ role: "user", text: displayValue }];
-    const matchedResponses: Array<Omit<PreviewMessage, "id">> = [];
-
-    if (selectedByNumber || selectedByLabel) {
-      const option = selectedByNumber ?? selectedByLabel;
-      const content = option ? resolveAutomationMessage(option.targetKey) : null;
-      nextMessages.push({ role: "bot", text: content || fallbackMessage });
-      appendMessages(nextMessages);
+    const token = getAccessToken();
+    if (!token) {
+      setError("Entra con una cuenta valida para probar tus respuestas.");
       return;
     }
 
-    for (const key of orderedQuickKeys) {
-      const automation = automationMap.get(key);
-      if (!automation?.enabled || !containsTrigger(value, automation.triggers ?? [])) {
-        continue;
-      }
+    setRunning(true);
+    setError(null);
+    setStatus(null);
 
-      if (key === "menu") {
-        matchedResponses.push({
-          role: "bot",
-          text: menuMessage.trim() || "Elige una opcion para continuar.",
-          menuOptions: previewMenu,
-        });
-        continue;
-      }
+    const result = await simulateWhatsappPreviewInbound(token, {
+      content: value,
+      messageType: "text",
+    });
 
-      const content = resolveAutomationMessage(key);
-      if (content) {
-        matchedResponses.push({ role: "bot", text: content });
-      }
-    }
+    setRunning(false);
 
-    for (const keyword of keywordRules) {
-      if (!normalized.includes(normalizeText(keyword.keyword))) {
-        continue;
-      }
-
-      const response = keyword.response.trim();
-      if (response) {
-        matchedResponses.push({ role: "bot", text: response });
-      }
-    }
-
-    const uniqueResponses = uniquePreviewMessages(matchedResponses);
-    if (uniqueResponses.length > 0) {
-      appendMessages([...nextMessages, ...uniqueResponses]);
+    if (!result.ok) {
+      setError(result.message);
       return;
     }
 
-    nextMessages.push({ role: "bot", text: fallbackMessage });
-    appendMessages(nextMessages);
+    setConversation(result.conversation);
+    setStatus("La prueba se hizo con la version guardada. Tambien la veras en Conversaciones.");
   };
 
   return (
@@ -582,8 +542,8 @@ function FloatingChatPreview({
               <Bot className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-display text-lg uppercase tracking-[0.08em] text-panel-ink">Vista previa del chat</p>
-              <p className="text-sm text-muted-foreground">Prueba rapida del bot</p>
+              <p className="font-display text-lg uppercase tracking-[0.08em] text-panel-ink">Prueba tu chat</p>
+              <p className="text-sm text-muted-foreground">Prueba real del bot</p>
             </div>
           </div>
           <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
@@ -591,66 +551,85 @@ function FloatingChatPreview({
           </div>
         </button>
         {!collapsed ? (
-          <div className="grid gap-4 p-4">
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-muted/30 px-3 py-2">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Prueba saludos, reservas, productos, soporte o palabras clave</p>
-              <Button onClick={() => setMessages([])} size="sm" type="button" variant="ghost">
-                <RotateCcw className="h-4 w-4" />
-                Reiniciar
-              </Button>
+          <div className="grid h-[min(70vh,640px)] grid-rows-[auto_1fr] p-4">
+            <div className="grid gap-4 overflow-hidden">
+              {dirty ? (
+                <div className="rounded-2xl border border-amber-300/80 bg-amber-100/85 px-4 py-3 text-sm text-amber-950">
+                  Tienes cambios sin guardar. Esta prueba usa la ultima version que ya guardaste.
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-muted/30 px-3 py-2">
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Prueba real con la ultima version guardada</p>
+                <Button disabled={!conversation && !draftMessage && !error && !status} onClick={clearPreview} size="sm" type="button" variant="ghost">
+                  <RotateCcw className="h-4 w-4" />
+                  Reiniciar
+                </Button>
+              </div>
+              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              {status ? <p className="text-sm text-success">{status}</p> : null}
+              {!loadingSession && !isSessionReady ? (
+                <p className="text-sm text-muted-foreground">
+                  Necesitas una sesion conectada y activa en memoria para ejecutar la prueba real.
+                </p>
+              ) : null}
             </div>
-            <div className="overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(243,247,242,0.9),rgba(253,251,245,0.95))]">
+            <div className="overflow-hidden rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(243,247,242,0.9),rgba(253,251,245,0.95))] min-h-0">
               <div className="flex items-center gap-3 border-b border-border/80 bg-background/80 px-4 py-4">
                 <div className="grid h-11 w-11 place-items-center rounded-full bg-panel-ink text-panel-ivory"><Bot className="h-5 w-5" /></div>
                 <div>
-                  <p className="font-medium text-panel-ink">Bot de atencion</p>
+                  <p className="font-medium text-panel-ink">Asistente de WhatsFlow</p>
                   <p className="text-sm text-muted-foreground">WhatsApp del negocio</p>
                 </div>
               </div>
-              <div className="grid max-h-[min(52vh,480px)] gap-3 overflow-y-auto p-4" ref={messagesRef}>
-                {messages.length ? messages.map((message) => (
-                  <ChatBubble align={message.role === "user" ? "right" : "left"} key={message.id} title={message.role === "user" ? "Cliente" : "Bot"}>
-                    {message.text}
-                    {message.menuOptions?.length ? (
-                      <div className="mt-3 grid gap-2">
-                        {message.menuOptions.map((option, index) => (
-                          <button
-                            className="rounded-xl border border-border/80 bg-background/90 px-3 py-2 text-left text-sm text-panel-ink transition-colors hover:bg-background"
-                            key={option.id}
-                            onClick={() => submitPreview(String(index + 1), option.label.trim() || `Opcion ${index + 1}`)}
-                            type="button"
-                          >
-                            {index + 1}. {option.label || "Opcion sin titulo"}
-                          </button>
-                        ))}
+              {session?.status === "pending" && session.qrCode ? (
+                <div className="grid h-full place-items-center gap-4 overflow-y-auto p-4 text-center">
+                  <img alt="QR de WhatsApp" className="mx-auto w-full max-w-[280px] rounded-lg border border-border bg-white p-3" src={session.qrCode} />
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Escanea este QR desde el telefono principal del negocio para activar la prueba.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex h-full min-h-0 flex-col">
+                  <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-4" ref={messagesRef}>
+                    {conversation?.messages.length ? conversation.messages.map((message) => (
+                      <ChatBubble
+                        align={message.direction === "outbound" ? "right" : "left"}
+                        key={message.id}
+                        title={message.direction === "outbound" ? "Bot" : "Entrada de prueba"}
+                      >
+                        <p className="whitespace-pre-wrap">{message.content}</p>
+                        <p className={cn("mt-2 text-[11px]", message.direction === "outbound" ? "text-panel-ivory/70" : "text-muted-foreground")}>
+                          {formatPreviewDate(message.sentAt)}
+                        </p>
+                      </ChatBubble>
+                    )) : (
+                      <div className="grid gap-3 rounded-[1.25rem] border border-dashed border-border/80 bg-background/70 px-4 py-5 text-sm text-muted-foreground">
+                        <p className="font-medium text-panel-ink">Prueba como responderia tu negocio.</p>
+                        <p>Escribe algo como <span className="font-medium text-panel-ink">hola quiero reservar</span> o <span className="font-medium text-panel-ink">quiero ver los productos</span>.</p>
                       </div>
-                    ) : null}
-                  </ChatBubble>
-                )) : (
-                  <div className="grid gap-3 rounded-[1.25rem] border border-dashed border-border/80 bg-background/70 px-4 py-5 text-sm text-muted-foreground">
-                    <p className="font-medium text-panel-ink">Prueba el flujo antes de guardar.</p>
-                    <p>Escribe <span className="font-medium text-panel-ink">hola quiero reservar</span>, <span className="font-medium text-panel-ink">precio de productos</span> o una palabra clave como <span className="font-medium text-panel-ink">{keywordRules[0]?.keyword || "horario"}</span>.</p>
+                    )}
                   </div>
-                )}
-              </div>
-              <form
-                className="flex items-center gap-2 border-t border-border/80 bg-background/85 p-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (!draftMessage.trim()) return;
-                  submitPreview(draftMessage);
-                  setDraftMessage("");
-                }}
-              >
-                <Input
-                  onChange={(event) => setDraftMessage(event.target.value)}
-                  placeholder="Ej. buenas tardes quiero una cita"
-                  value={draftMessage}
-                />
-                <Button disabled={!draftMessage.trim()} size="icon" type="submit">
-                  <SendHorizontal className="h-4 w-4" />
-                </Button>
-              </form>
+                  <form
+                    className="flex items-center gap-2 border-t border-border/80 bg-background/85 p-3"
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      if (!draftMessage.trim()) return;
+                      await submitPreview(draftMessage);
+                      setDraftMessage("");
+                    }}
+                  >
+                    <Input
+                      disabled={loadingSession || running || !isSessionReady}
+                      onChange={(event) => setDraftMessage(event.target.value)}
+                      placeholder="Ej. buenas tardes quiero una cita"
+                      value={draftMessage}
+                    />
+                    <Button disabled={!draftMessage.trim() || loadingSession || running || !isSessionReady} size="icon" type="submit">
+                      {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
+                    </Button>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         ) : null}
@@ -659,6 +638,16 @@ function FloatingChatPreview({
   );
 }
 
+function formatPreviewDate(value: string) {
+  try {
+    return new Date(value).toLocaleString("es-EC", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return value;
+  }
+}
 function MenuOptionEditor({ disableDown, disableUp, menuTargets, onChange, onMoveDown, onMoveUp, onRemove, option, position }: { disableDown: boolean; disableUp: boolean; menuTargets: Array<{ key: AutomationKey; label: string; enabled: boolean }>; onChange: (nextOption: MenuOptionView) => void; onMoveDown: () => void; onMoveUp: () => void; onRemove: () => void; option: MenuOptionView; position: number; }) {
   return (
     <div className="grid gap-4 rounded-[1.25rem] border border-border/80 bg-[linear-gradient(180deg,rgba(252,249,241,0.92),rgba(243,245,240,0.86))] p-4 shadow-sm lg:grid-cols-[72px_minmax(0,1.2fr)_minmax(0,1fr)_auto] lg:items-center">
@@ -719,6 +708,14 @@ function moveItem(items: MenuOptionView[], from: number, to: number) {
   next.splice(to, 0, item);
   return next.map((entry, index) => ({ ...entry, position: index + 1 }));
 }
+
+
+
+
+
+
+
+
 
 
 

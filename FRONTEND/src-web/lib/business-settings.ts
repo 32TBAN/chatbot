@@ -113,7 +113,7 @@ async function requestBusinessSettings(token: string, init?: RequestInit): Promi
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
@@ -121,7 +121,7 @@ async function requestBusinessSettings(token: string, init?: RequestInit): Promi
       return {
         ok: false,
         code: "network_error",
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos cargar esta informacion en este momento. Intenta otra vez.",
       };
     }
 
@@ -195,14 +195,15 @@ export async function uploadWelcomeLogo(token: string, file: File): Promise<Busi
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
     return {
       ok: false,
       code: "network_error",
-      message: "No se pudo conectar con el backend para subir el logo.",
+      message: "No pudimos subir el logo en este momento.",
     };
   }
 }
+

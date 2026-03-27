@@ -52,12 +52,13 @@ class MessageInboxService {
         const latest = items[0];
         const customer = latest.customer;
         const source = customer?.source ?? 'whatsapp';
+        const isPreview = source === 'preview' || source === 'debug';
         return {
           customerId,
           customerName: customer?.name?.trim() || null,
           phone: customer?.phone ?? 'Sin telefono',
           source,
-          isDebug: source === 'debug',
+          isPreview,
           lastDirection: latest.direction,
           lastMessage: latest.content?.trim() || '[Mensaje sin texto]',
           lastMessageAt: (latest.sentAt ?? latest.createdAt).toISOString(),
@@ -111,7 +112,7 @@ class MessageInboxService {
         name: customer.name?.trim() || null,
         phone: customer.phone,
         source: customer.source ?? 'whatsapp',
-        isDebug: customer.source === 'debug',
+        isPreview: customer.source === 'preview' || customer.source === 'debug',
       },
       messages: messages.map((message) => ({
         id: message.id,

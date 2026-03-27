@@ -40,14 +40,14 @@ export function TopBar({
           <SearchCheck className="h-4 w-4 text-muted-foreground" />
           <Input
             className="h-auto border-0 bg-transparent px-0 py-0 focus-visible:ring-0"
-            placeholder="Buscar cliente, flujo o ajuste..."
+            placeholder="Buscar cliente, mensaje o cita..."
           />
         </div>
         <Badge variant={setupIncomplete ? "warning" : "success"} className="hidden sm:inline-flex">
-          {setupIncomplete ? "Configuracion requerida" : "Whatsapp estable"}
+          {setupIncomplete ? "Completa tu negocio" : "WhatsApp listo"}
         </Badge>
         <div className="hidden rounded-md border border-border bg-card px-3 py-2 lg:block">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Sesion</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tu cuenta</p>
           <p className="max-w-[180px] truncate text-sm text-panel-ink">{label}</p>
         </div>
         <Button disabled={logoutBusy} onClick={onLogout} size="sm" variant="outline">

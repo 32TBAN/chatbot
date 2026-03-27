@@ -19,7 +19,7 @@ export function LoginForm({
 }) {
   return (
     <form className="mt-6 space-y-5" onSubmit={onSubmit}>
-      <Field error={errors.email} icon={Mail} label="Email" value={values.email}>
+      <Field error={errors.email} icon={Mail} label="Correo" value={values.email}>
         <Input
           autoComplete="email"
           disabled={authBusy}
@@ -39,7 +39,7 @@ export function LoginForm({
         />
       </Field>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">Usa las credenciales activas configuradas en el backend.</p>
+        <p className="text-sm text-muted-foreground">Entra con la cuenta que usas para administrar tu negocio.</p>
         <Button disabled={authBusy} type="submit">
           {authBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
           Entrar

@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { WhatsappSessionStatus } from '@prisma/client';
 import {
   AuthenticatedUser,
@@ -63,11 +63,7 @@ export class WhatsappSessionsService {
     return this.buildView(businessId, session.sessionKey, refreshed);
   }
 
-  async simulateInboundDebug(user: AuthenticatedUser, content: string) {
-    if (user.role !== 'owner') {
-      throw new ForbiddenException('Solo el owner puede usar el debug de WhatsApp');
-    }
-
+  async simulateInboundPreview(user: AuthenticatedUser, content: string) {
     const businessId = requireBusinessId(user);
     const session = await this.prisma.whatsappSession.findUnique({
       where: { businessId },
@@ -77,7 +73,7 @@ export class WhatsappSessionsService {
       throw new BadRequestException('La sesion de WhatsApp no esta conectada.');
     }
 
-    const simulation = await this.runtime.simulateInboundDebug(session, content);
+    const simulation = await this.runtime.simulateInboundPreview(session, content);
     return this.getConversationPayload(businessId, simulation.customer.id);
   }
 
@@ -152,7 +148,7 @@ export class WhatsappSessionsService {
             name: customer.name?.trim() || null,
             phone: customer.phone,
             source: customer.source ?? 'whatsapp',
-            isDebug: customer.source === 'debug',
+            isPreview: customer.source === 'preview',
           }
         : null,
       messages: messages.map((message) => ({

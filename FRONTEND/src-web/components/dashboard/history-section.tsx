@@ -155,7 +155,7 @@ export function HistorySection() {
           <div className="flex items-center justify-between border-b border-border/80 px-5 py-4">
             <div>
               <p className="font-display text-lg uppercase tracking-[0.08em] text-panel-ink">Conversaciones</p>
-              <p className="text-sm text-muted-foreground">Mensajes reales recibidos desde WhatsApp y pruebas de debug.</p>
+              <p className="text-sm text-muted-foreground">Mensajes reales recibidos desde WhatsApp y pruebas del bot.</p>
             </div>
             <Button disabled={!conversations.length} onClick={() => void refreshInbox()} size="icon" type="button" variant="ghost">
               <RefreshCw className={cn('h-4 w-4', refreshing ? 'animate-spin' : '')} />
@@ -180,11 +180,11 @@ export function HistorySection() {
                     <div>
                       <p className="font-medium">{conversation.customerName || conversation.phone}</p>
                       <p className={cn('text-sm', selectedCustomerId === conversation.customerId ? 'text-panel-ivory/75' : 'text-muted-foreground')}>
-                        {conversation.isDebug ? 'Conversacion de prueba' : conversation.customerName ? conversation.phone : 'Contacto desde WhatsApp'}
+                        {conversation.isPreview ? 'Conversacion de prueba' : conversation.customerName ? conversation.phone : 'Contacto desde WhatsApp'}
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      {conversation.isDebug ? <Badge variant="warning">Prueba</Badge> : null}
+                      {conversation.isPreview ? <Badge variant="warning">Prueba</Badge> : null}
                       <Badge variant={conversation.lastDirection === 'inbound' ? 'default' : 'success'}>
                         {conversation.lastDirection === 'inbound' ? 'Cliente' : 'Bot'}
                       </Badge>
@@ -206,8 +206,8 @@ export function HistorySection() {
                 <MessageSquareText className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium text-panel-ink">Todavia no hay conversaciones registradas.</p>
-                <p className="mt-2 text-sm">Cuando el negocio reciba mensajes o ejecutes debug, apareceran aqui automaticamente.</p>
+                <p className="font-medium text-panel-ink">Todavia no tienes conversaciones guardadas.</p>
+                <p className="mt-2 text-sm">Cuando el negocio reciba mensajes o ejecutes una prueba, apareceran aqui automaticamente.</p>
               </div>
             </div>
           )}
@@ -237,7 +237,7 @@ export function HistorySection() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {selectedConversation.customer?.isDebug ? <Badge variant="warning">Prueba</Badge> : null}
+                  {selectedConversation.customer?.isPreview ? <Badge variant="warning">Prueba</Badge> : null}
                   <Badge variant="success">Solo lectura</Badge>
                 </div>
               </div>
@@ -254,8 +254,8 @@ export function HistorySection() {
                         <p className={cn('text-[11px] uppercase tracking-[0.24em]', message.direction === 'outbound' ? 'text-panel-ivory/70' : 'text-muted-foreground')}>
                           {message.direction === 'outbound'
                             ? 'Bot'
-                            : selectedConversation.customer?.isDebug
-                              ? 'Debug inbound'
+                            : selectedConversation.customer?.isPreview
+                              ? 'Entrada de prueba'
                               : 'Cliente'}
                         </p>
                         <p className="mt-1 whitespace-pre-wrap">{message.content}</p>
@@ -278,8 +278,8 @@ export function HistorySection() {
                 <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-border bg-muted/40">
                   <Bot className="h-6 w-6" />
                 </div>
-                <p className="font-medium text-panel-ink">Selecciona una conversacion para ver el detalle.</p>
-                <p className="text-sm">Aqui aparecera el historial completo entre el cliente, el bot y las pruebas de debug.</p>
+                <p className="font-medium text-panel-ink">Selecciona una conversacion para ver todos los mensajes.</p>
+                <p className="text-sm">Aqui veras la conversacion completa entre tu cliente y las respuestas de tu negocio.</p>
               </div>
             </div>
           )}
@@ -298,3 +298,7 @@ function formatTimestamp(value: string, detailed = false) {
     month: detailed ? 'short' : undefined,
   }).format(date);
 }
+
+
+
+

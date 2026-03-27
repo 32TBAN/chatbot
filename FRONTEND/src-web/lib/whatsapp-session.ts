@@ -16,13 +16,13 @@ export type WhatsappSessionView = {
   isRuntimeActive: boolean;
 };
 
-export type DebugConversationResult = {
+export type PreviewConversationResult = {
   customer: {
     id: string;
     name: string | null;
     phone: string;
     source: string;
-    isDebug: boolean;
+    isPreview: boolean;
   } | null;
   messages: Array<{
     id: string;
@@ -44,10 +44,10 @@ type WhatsappSessionResult =
       message: string;
     };
 
-type DebugInboundResult =
+type PreviewInboundResult =
   | {
       ok: true;
-      conversation: DebugConversationResult;
+      conversation: PreviewConversationResult;
     }
   | {
       ok: false;
@@ -82,7 +82,7 @@ async function requestSession(path: string, token: string, method = "GET"): Prom
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
@@ -90,7 +90,7 @@ async function requestSession(path: string, token: string, method = "GET"): Prom
       return {
         ok: false,
         code: "network_error",
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos cargar esta informacion en este momento. Intenta otra vez.",
       };
     }
 
@@ -102,12 +102,12 @@ async function requestSession(path: string, token: string, method = "GET"): Prom
   }
 }
 
-export async function simulateWhatsappDebugInbound(
+export async function simulateWhatsappPreviewInbound(
   token: string,
   input: { content: string; messageType?: "text" | "image" | "video" | "document" },
-): Promise<DebugInboundResult> {
+): Promise<PreviewInboundResult> {
   try {
-    const response = await apiRequest("/whatsapp-sessions/debug/inbound", {
+    const response = await apiRequest("/whatsapp-sessions/preview/inbound", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -122,20 +122,20 @@ export async function simulateWhatsappDebugInbound(
       return {
         ok: false,
         code: "server_error",
-        message: "No se pudo ejecutar la prueba de WhatsApp.",
+        message: "No se pudo ejecutar la prueba del bot.",
       };
     }
 
     return {
       ok: true,
-      conversation: (await response.json()) as DebugConversationResult,
+      conversation: (await response.json()) as PreviewConversationResult,
     };
   } catch (error) {
     if (error instanceof Error && error.message === "api_url_missing") {
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
@@ -143,14 +143,14 @@ export async function simulateWhatsappDebugInbound(
       return {
         ok: false,
         code: "network_error",
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos cargar esta informacion en este momento. Intenta otra vez.",
       };
     }
 
     return {
       ok: false,
       code: "server_error",
-      message: "No se pudo ejecutar la prueba de WhatsApp.",
+      message: "No se pudo ejecutar la prueba del bot.",
     };
   }
 }
@@ -170,3 +170,4 @@ export function pauseWhatsappSession(token: string) {
 export function logoutWhatsappSession(token: string) {
   return requestSession("/whatsapp-sessions/logout", token, "POST");
 }
+

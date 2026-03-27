@@ -8,10 +8,10 @@ export function SessionBootScreen() {
           <LoaderCircle className="h-5 w-5 animate-spin" />
         </div>
         <p className="mt-5 font-display text-2xl uppercase tracking-[0.14em] text-panel-ink">
-          Preparando acceso
+          Entrando a WhatsFlow
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Verificando sesion y estado del panel operativo.
+          Estamos preparando tu cuenta y cargando la informacion de tu negocio.
         </p>
       </div>
     </div>

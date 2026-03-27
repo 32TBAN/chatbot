@@ -20,7 +20,7 @@ const STATUS_COPY: Record<WhatsappSessionStatus, { label: string; variant: "defa
   connected: { label: "Conectada", variant: "success" },
   paused: { label: "Pausada", variant: "default" },
   disconnected: { label: "Sin enlace", variant: "destructive" },
-  expired: { label: "Credenciales vencidas", variant: "destructive" },
+  expired: { label: "Conexion vencida", variant: "destructive" },
 };
 
 function formatDate(value: string | null) {
@@ -58,7 +58,7 @@ export function QrSection() {
     const token = getAccessToken();
     if (!token) {
       setIsLoading(false);
-      setError("No hay una sesion autenticada para conectar WhatsApp.");
+      setError("Entra con una cuenta valida para conectar tu WhatsApp.");
       return;
     }
 
@@ -129,7 +129,7 @@ export function QrSection() {
   const runAction = async (action: "activate" | "pause" | "logout") => {
     const token = getAccessToken();
     if (!token) {
-      setError("No hay una sesion autenticada para conectar WhatsApp.");
+      setError("Entra con una cuenta valida para conectar tu WhatsApp.");
       return;
     }
 
@@ -173,7 +173,7 @@ export function QrSection() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <CardDescription>Canal principal</CardDescription>
-              <CardTitle>QR y estado de sesion</CardTitle>
+              <CardTitle>Conecta tu WhatsApp</CardTitle>
             </div>
             {statusMeta ? <Badge className="max-w-full whitespace-normal text-center leading-4" variant={statusMeta.variant}>{statusMeta.label}</Badge> : <Badge className="max-w-full whitespace-normal text-center leading-4" variant="default">Sin inicializar</Badge>}
           </div>
@@ -184,16 +184,16 @@ export function QrSection() {
               <div className="grid min-h-[320px] place-items-center text-center">
                 <div>
                   <LoaderCircle className="mx-auto h-8 w-8 animate-spin text-panel-ink" />
-                  <p className="mt-3 text-sm text-muted-foreground">Consultando el estado real de la sesion...</p>
+                  <p className="mt-3 text-sm text-muted-foreground">Revisando el estado de tu WhatsApp...</p>
                 </div>
               </div>
             ) : isGeneratingQr ? (
               <div className="grid min-h-[320px] place-items-center text-center">
                 <div>
                   <LoaderCircle className="mx-auto h-8 w-8 animate-spin text-panel-ink" />
-                  <p className="mt-4 text-sm font-medium text-panel-ink">Generando QR en el backend...</p>
+                  <p className="mt-4 text-sm font-medium text-panel-ink">Preparando tu codigo QR...</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Estamos iniciando el cliente de WhatsApp y esperando el primer QR.
+                    Estamos preparando la conexion de WhatsApp y esperando el primer QR.
                   </p>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export function QrSection() {
               <div className="grid gap-4 text-center">
                 <img alt="QR de WhatsApp" className="mx-auto w-full max-w-[320px] rounded-lg border border-border bg-white p-3" src={session?.qrCode ?? undefined} />
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Escanea este QR desde WhatsApp en el telefono principal del negocio. El panel detectara la conexion automaticamente.
+                  Escanea este QR desde el telefono principal del negocio. WhatsFlow detectara la conexion automaticamente.
                 </p>
               </div>
             ) : (
@@ -212,15 +212,15 @@ export function QrSection() {
                   </div>
                   <p className="mt-4 text-sm font-medium text-panel-ink">
                     {session?.status === "connected"
-                      ? "La sesion ya esta conectada y operativa."
+                      ? "Tu WhatsApp ya esta conectado y listo para usar."
                       : session?.status === "paused"
-                        ? "La sesion esta en pausa y conserva las credenciales locales."
+                        ? "Tu WhatsApp esta en pausa, pero conserva la conexion guardada."
                         : session?.status === "disconnected" || session?.status === "expired"
-                          ? "Activa la sesion para generar un QR nuevo o restaurar credenciales existentes."
-                          : "Activa la sesion para que backend inicialice el cliente de WhatsApp."}
+                          ? "Activa WhatsApp para generar un nuevo QR o recuperar la conexion guardada."
+                          : "Activa WhatsApp para comenzar la conexion desde esta cuenta."}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {isRefreshing ? "Actualizando estado..." : "El frontend solo refleja el estado que mantiene el backend."}
+                    {isRefreshing ? "Actualizando estado..." : "Aqui ves el estado real de tu conexion de WhatsApp."}
                   </p>
                 </div>
               </div>
@@ -235,7 +235,7 @@ export function QrSection() {
         <Card className="bg-card/95">
           <CardHeader>
             <CardDescription>Controles</CardDescription>
-            <CardTitle>Acciones de sesion</CardTitle>
+            <CardTitle>Acciones de WhatsApp</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <Button disabled={actionBusy !== null} onClick={() => void runAction("activate")} type="button">
@@ -244,7 +244,7 @@ export function QrSection() {
             </Button>
             <Button disabled={actionBusy !== null || !session?.id} onClick={() => void runAction("pause")} type="button" variant="secondary">
               {actionBusy === "pause" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}
-              Pausar sin perder credenciales
+              Pausar sin perder la conexion guardada
             </Button>
             <Button disabled={actionBusy !== null || !session?.id} onClick={() => void runAction("logout")} type="button" variant="outline">
               {actionBusy === "logout" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
@@ -252,7 +252,7 @@ export function QrSection() {
             </Button>
             <Button disabled={isRefreshing} onClick={() => window.location.reload()} type="button" variant="ghost">
               <RefreshCw className="h-4 w-4" />
-              Recargar panel
+              Actualizar estado
             </Button>
           </CardContent>
         </Card>
@@ -260,7 +260,7 @@ export function QrSection() {
         <Card className="bg-card/95">
           <CardHeader>
             <CardDescription>Dispositivo</CardDescription>
-            <CardTitle>Salud del enlace</CardTitle>
+            <CardTitle>Estado de la conexion</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="flex items-center gap-3 rounded-lg border border-border px-4 py-4">
@@ -268,12 +268,12 @@ export function QrSection() {
                 <Smartphone className="h-5 w-5 text-panel-ink" />
               </div>
               <div>
-                <p className="text-sm font-medium text-panel-ink">Numero conectado</p>
-                <p className="text-sm text-muted-foreground">{session?.phoneNumber ?? "Aun no disponible"}</p>
+                <p className="text-sm font-medium text-panel-ink">Numero vinculado</p>
+                <p className="text-sm text-muted-foreground">{session?.phoneNumber ?? "Todavia no disponible"}</p>
               </div>
             </div>
-            <Detail label="Credenciales locales" value={session?.hasStoredCredentials ? "Disponibles" : "No disponibles"} />
-            <Detail label="Cliente en memoria" value={session?.isRuntimeActive ? "Activo" : "Inactivo"} />
+            <Detail label="Conexion guardada" value={session?.hasStoredCredentials ? "Disponibles" : "No disponibles"} />
+            <Detail label="Conexion activa ahora" value={session?.isRuntimeActive ? "Activo" : "Inactivo"} />
             <Detail label="Ultima actividad" value={formatDate(session?.lastSeenAt ?? null)} />
             <Detail label="Conexion establecida" value={formatDate(session?.connectedAt ?? null)} />
           </CardContent>
@@ -291,4 +291,14 @@ function Detail({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
 

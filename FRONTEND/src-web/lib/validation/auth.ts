@@ -1,20 +1,20 @@
 import type { LoginValues, RegisterValues } from "@/types/auth";
 
 export function validateName(name: string) {
-  if (!name.trim()) return "El nombre es obligatorio.";
+  if (!name.trim()) return "Escribe tu nombre.";
   return undefined;
 }
 
 export function validateEmail(email: string) {
-  if (!email.trim()) return "El email es obligatorio.";
+  if (!email.trim()) return "Escribe tu correo.";
   const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!pattern.test(email.trim())) return "Ingresa un email valido.";
+  if (!pattern.test(email.trim())) return "Escribe un correo valido.";
   return undefined;
 }
 
 export function validatePassword(password: string) {
-  if (!password.trim()) return "La contrasena es obligatoria.";
-  if (password.trim().length < 6) return "La contrasena debe tener al menos 6 caracteres.";
+  if (!password.trim()) return "Escribe tu contrasena.";
+  if (password.trim().length < 6) return "Tu contrasena debe tener al menos 6 caracteres.";
   return undefined;
 }
 
@@ -33,11 +33,11 @@ export function validateRegister(values: RegisterValues) {
   };
 
   if (values.phone.trim() && !/^[0-9+\-\s()]{7,}$/.test(values.phone.trim())) {
-    errors.phone = "Ingresa un telefono valido o deja el campo vacio.";
+    errors.phone = "Escribe un telefono valido o deja el campo vacio.";
   }
 
   if (!values.confirmPassword.trim()) {
-    errors.confirmPassword = "Confirma la contrasena.";
+    errors.confirmPassword = "Repite tu contrasena.";
   } else if (values.password !== values.confirmPassword) {
     errors.confirmPassword = "Las contrasenas no coinciden.";
   }

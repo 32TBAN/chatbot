@@ -33,21 +33,20 @@ export function AuthShell() {
             <div>
               <p className="font-display text-xl uppercase tracking-[0.16em]">WhatsFlow</p>
               <p className="text-xs uppercase tracking-[0.22em] text-panel-ivory/60">
-                Operacion por WhatsApp
+                Ventas y atencion por WhatsApp
               </p>
             </div>
           </div>
 
           <div className="mt-10 max-w-xl">
             <p className="font-display text-xs uppercase tracking-[0.34em] text-panel-ivory/60">
-              Acceso al panel
+              Todo en un solo lugar
             </p>
             <h1 className="mt-3 font-display text-4xl uppercase tracking-[0.08em] sm:text-5xl">
-              Controla flujos, citas y conexion desde una sola mesa.
+              Responde mejor, organiza tu negocio y vende por WhatsApp.
             </h1>
             <p className="mt-5 max-w-lg text-sm leading-7 text-panel-ivory/72 sm:text-base">
-              Entra con la cuenta operativa del negocio para preparar automatizaciones, operar reservas y
-              mantener la atencion bajo una sesion conectada al backend real.
+              Entra con la cuenta de tu negocio para automatizar respuestas, ordenar citas y mantener tus conversaciones siempre a la mano.
             </p>
           </div>
 
@@ -55,18 +54,18 @@ export function AuthShell() {
             {[
               {
                 icon: Workflow,
-                title: "Flujos activos",
-                detail: "Flujos editables con resultados visibles y trazables.",
+                title: "Respuestas automaticas",
+                detail: "Ahorra tiempo con mensajes listos para las preguntas mas comunes.",
               },
               {
                 icon: ShieldCheck,
-                title: "Sesion persistente",
-                detail: "Acceso continuo y preparado para integracion real de backend.",
+                title: "Todo mas ordenado",
+                detail: "Ten tus conversaciones, citas y datos del negocio en un solo lugar.",
               },
               {
                 icon: Phone,
-                title: "Operacion conectada",
-                detail: "QR, citas y catalogo bajo una sola capa de acceso.",
+                title: "WhatsApp siempre listo",
+                detail: "Conecta tu numero, prueba el bot y sigue atendiendo sin enredos.",
               },
             ].map((item) => {
               const Icon = item.icon;
@@ -87,19 +86,19 @@ export function AuthShell() {
           <div className="mx-auto flex max-w-xl flex-col">
             <div className="mt-8">
               <AuthHeader
-                title={authMode === "login" ? "Iniciar sesion" : "Crear cuenta"}
+                title={authMode === "login" ? "Entra a tu cuenta" : "Crea tu cuenta"}
                 description={
                   authMode === "login"
-                    ? "Accede al panel operativo con tu correo principal y credenciales del backend."
-                    : "Crea tu cuenta con nombre, correo, telefono opcional y una contrasena segura."
+                    ? "Usa tu correo y tu contrasena para entrar y seguir atendiendo desde WhatsFlow."
+                    : "Crea tu cuenta para empezar a organizar tus mensajes, citas y respuestas automaticas."
                 }
               />
             </div>
 
             <div className="mt-6 grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1">
               {[
-                { key: "login", label: "Login" },
-                { key: "register", label: "Registro" },
+                { key: "login", label: "Entrar" },
+                { key: "register", label: "Crear cuenta" },
               ].map((item) => (
                 <button
                   key={item.key}
@@ -134,8 +133,8 @@ export function AuthShell() {
 
             <p className="mt-6 text-sm leading-6 text-muted-foreground">
               {authMode === "login"
-                ? "Si aun no tienes cuenta, usa la pestana de registro para crearla."
-                : "Despues de crear tu cuenta podras completar la informacion del negocio."}
+                ? "Si todavia no tienes cuenta, puedes crearla en unos segundos."
+                : "Cuando termines, podras completar los datos de tu negocio y empezar a usar WhatsFlow."}
             </p>
           </div>
         </section>

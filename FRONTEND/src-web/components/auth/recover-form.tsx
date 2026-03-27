@@ -20,7 +20,7 @@ export function RecoverForm({
 }) {
   return (
     <form className="mt-6 space-y-5" onSubmit={onSubmit}>
-      <Field error={validateEmail(values.email)} icon={Mail} label="Email" value={values.email}>
+      <Field error={validateEmail(values.email)} icon={Mail} label="Correo" value={values.email}>
         <Input
           autoComplete="email"
           disabled={authBusy}
@@ -31,11 +31,11 @@ export function RecoverForm({
       </Field>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button className="text-sm text-panel-ink underline-offset-4 hover:underline" onClick={onBack} type="button">
-          Volver a iniciar sesion
+          Volver para entrar
         </button>
         <Button disabled={authBusy} type="submit">
           {authBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-          Enviar recuperacion
+          Recuperar acceso
         </Button>
       </div>
     </form>

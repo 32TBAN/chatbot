@@ -1,9 +1,11 @@
+import { apiRequest } from '@/lib/api';
+
 export type InboxConversation = {
   customerId: string;
   customerName: string | null;
   phone: string;
   source: string;
-  isDebug: boolean;
+  isPreview: boolean;
   lastDirection: 'inbound' | 'outbound';
   lastMessage: string;
   lastMessageAt: string;
@@ -24,12 +26,10 @@ export type InboxConversationDetail = {
     name: string | null;
     phone: string;
     source: string;
-    isDebug: boolean;
+    isPreview: boolean;
   } | null;
   messages: InboxMessage[];
 };
-
-import { apiRequest } from '@/lib/api';
 
 type InboxResult<T> =
   | { ok: true; data: T }
@@ -58,13 +58,13 @@ async function requestInbox<T>(path: string, token: string): Promise<InboxResult
     if (error instanceof Error && error.message === 'api_url_missing') {
       return {
         ok: false,
-        message: 'Falta configurar VITE_API_URL para conectar con el backend.',
+        message: 'Falta conectar la API para que esta seccion funcione.',
       };
     }
 
     return {
       ok: false,
-      message: 'No se pudo conectar con el backend para cargar el historial.',
+      message: 'No pudimos cargar las conversaciones en este momento.',
     };
   }
 }
@@ -76,3 +76,4 @@ export function getInboxConversations(token: string) {
 export function getInboxConversation(token: string, customerId: string) {
   return requestInbox<InboxConversationDetail>(`/message-inbox/conversations/${customerId}/messages`, token);
 }
+

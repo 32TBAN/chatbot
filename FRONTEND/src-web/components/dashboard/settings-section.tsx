@@ -201,7 +201,7 @@ export function SettingsSection({
     }
 
     if (!token) {
-      setLoadError("No hay una sesion valida para cargar el negocio.");
+      setLoadError("Entra de nuevo para cargar los datos de tu negocio.");
       setIsLoadingBusiness(false);
       return;
     }
@@ -304,7 +304,7 @@ export function SettingsSection({
 
     const token = getAccessToken();
     if (!token) {
-      setFormError("No hay una sesion valida para subir el logo de bienvenida.");
+      setFormError("Entra de nuevo para subir el logo de bienvenida.");
       return;
     }
 
@@ -362,7 +362,7 @@ export function SettingsSection({
     const token = getAccessToken();
     if (!token) {
       setFormError(
-        isEditing ? "No hay una sesion valida para actualizar el negocio." : "No hay una sesion valida para crear el negocio.",
+        isEditing ? "Entra de nuevo para actualizar los datos de tu negocio." : "Entra de nuevo para crear los datos de tu negocio.",
       );
       return;
     }
@@ -427,7 +427,7 @@ export function SettingsSection({
     const settingsToken = getAccessToken();
     if (!settingsToken) {
       setIsSaving(false);
-      setFormError("No se pudo obtener una sesion valida para guardar la configuracion de envio.");
+      setFormError("Entra de nuevo para guardar esta configuracion.");
       return;
     }
 
@@ -490,12 +490,12 @@ export function SettingsSection({
           </CardHeader>
           <CardContent className="grid gap-4 py-5">
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Define la informacion principal del negocio. Con esto podras empezar a usar el panel con datos reales.
+              Completa los datos principales de tu negocio para empezar a atender con informacion real.
             </p>
             <div className="grid gap-4 md:grid-cols-3">
               {[
                 "Automatizaciones listas para trabajar con datos reales.",
-                "QR y canal principal preparados para la operacion.",
+                "WhatsApp y canal principal listos para atender.",
                 "Agenda, catalogo e historial habilitados al completar el negocio.",
               ].map((item) => (
                 <div key={item} className="rounded-lg border border-border bg-card px-4 py-4">
@@ -513,7 +513,7 @@ export function SettingsSection({
           </CardHeader>
           <CardContent className="grid gap-4">
             {isLoadingBusiness ? (
-              <p className="text-sm text-muted-foreground">Cargando informacion del negocio...</p>
+              <p className="text-sm text-muted-foreground">Cargando los datos de tu negocio...</p>
             ) : null}
 
             {loadError ? (
@@ -644,7 +644,7 @@ export function SettingsSection({
                         ? "Subiendo logo..."
                         : welcomeLogoFilename
                           ? "Archivo actual: " + welcomeLogoFilename
-                          : "Aun no hay un logo cargado para la bienvenida."
+                          : "Todavia no has subido un logo para la bienvenida."
                       : "Guarda primero el negocio para habilitar la carga del logo."}
                   </p>
                 </div>
@@ -744,7 +744,7 @@ export function SettingsSection({
                     </div>
                   ) : (
                     <div className="rounded-lg border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
-                      Aun no hay numeros agregados para esta regla.
+                      Todavia no has agregado numeros a esta regla.
                     </div>
                   )}
                 </div>
@@ -817,3 +817,6 @@ function Field({
     </div>
   );
 }
+
+
+

@@ -11,3 +11,5 @@ BACKEND/.wa-sessions/
 BACKEND/.wwebjs_auth/
 BACKEND/.wwebjs_cache/
 BACKEND/.wwwebjs_cache/
+*.tsbuildinfo
+

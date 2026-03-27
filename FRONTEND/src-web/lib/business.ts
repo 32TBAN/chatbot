@@ -160,7 +160,7 @@ export async function createBusiness(input: CreateBusinessInput): Promise<Create
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
@@ -168,7 +168,7 @@ export async function createBusiness(input: CreateBusinessInput): Promise<Create
       return {
         ok: false,
         code: "network_error",
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos cargar esta informacion en este momento. Intenta otra vez.",
       };
     }
 
@@ -222,7 +222,7 @@ export async function getMyBusiness(token: string): Promise<GetMyBusinessResult>
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
@@ -230,7 +230,7 @@ export async function getMyBusiness(token: string): Promise<GetMyBusinessResult>
       return {
         ok: false,
         code: "network_error",
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos cargar esta informacion en este momento. Intenta otra vez.",
       };
     }
 
@@ -286,7 +286,7 @@ export async function updateBusiness(input: UpdateBusinessInput): Promise<Update
       return {
         ok: false,
         code: "config_error",
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que esta seccion funcione.",
       };
     }
 
@@ -294,7 +294,7 @@ export async function updateBusiness(input: UpdateBusinessInput): Promise<Update
       return {
         ok: false,
         code: "network_error",
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos cargar esta informacion en este momento. Intenta otra vez.",
       };
     }
 
@@ -305,3 +305,4 @@ export async function updateBusiness(input: UpdateBusinessInput): Promise<Update
     };
   }
 }
+

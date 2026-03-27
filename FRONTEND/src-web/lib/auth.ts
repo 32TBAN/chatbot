@@ -103,25 +103,25 @@ function mapFailure(code: AuthFailureCode): AuthResult {
       return {
         ok: false,
         code,
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para que WhatsFlow pueda iniciar sesion.",
       };
     case "invalid_credentials":
       return {
         ok: false,
         code,
-        message: "El email o la contrasena no coinciden.",
+        message: "El correo o la contrasena no coinciden.",
       };
     case "network_error":
       return {
         ok: false,
         code,
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos conectar tu cuenta. Revisa tu conexion e intenta otra vez.",
       };
     default:
       return {
         ok: false,
         code: "server_error",
-        message: "Hubo un problema al iniciar sesion. Intenta de nuevo.",
+        message: "No pudimos iniciar sesion en este momento. Intenta de nuevo.",
       };
   }
 }
@@ -132,25 +132,25 @@ function mapRegisterFailure(code: RegisterFailureCode): RegisterResult {
       return {
         ok: false,
         code,
-        message: "Falta configurar VITE_API_URL para conectar con el backend.",
+        message: "Falta conectar la API para crear tu cuenta.",
       };
     case "duplicate_email":
       return {
         ok: false,
         code,
-        message: "Ese correo ya esta registrado.",
+        message: "Ese correo ya tiene una cuenta creada.",
       };
     case "network_error":
       return {
         ok: false,
         code,
-        message: "No se pudo conectar con el backend. Verifica la API e intenta de nuevo.",
+        message: "No pudimos crear tu cuenta por un problema de conexion. Intenta otra vez.",
       };
     default:
       return {
         ok: false,
         code: "server_error",
-        message: "Hubo un problema al crear la cuenta. Intenta de nuevo.",
+        message: "No pudimos crear tu cuenta en este momento. Intenta de nuevo.",
       };
   }
 }
