@@ -13,3 +13,5 @@ BACKEND/.wwebjs_cache/
 BACKEND/.wwwebjs_cache/
 *.tsbuildinfo
 
+.vercel
+.env*.local
